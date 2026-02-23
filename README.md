@@ -16,10 +16,23 @@ Dieses Projekt ermöglicht die Ansteuerung eines physischen **VDO MTCO 1323** Ta
 - **Software:** Eine Simulation oder ein Plugin, welches das KOMSI-Protokoll über die serielle Schnittstelle ausgibt (z.B. **TheBus2Komsi** oder **Omsi2Komsi**).
 
 ## Installation & Nutzung
-1. Klone das Repository in deinen Workspace.
-2. Konfiguriere die projektspezifischen Parameter (z.B. CAN-Bitrate).
-3. Flashe die Firmware auf deinen Controller.
-4. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (120 Ohm).
+1. Installiere den Rust Toolchainfür das **ESP32C6**
+2. Klone das Repository in deinen Workspace.
+3. Verbinde den USB-Anschluss mit der Beschriftung "ESP32C6"   (nicht "CH343") mit dem PC
+4. Konfiguriere die projektspezifischen Parameter (z.B. CAN-Bitrate).
+5. `cargo run` - Flashe die Firmware auf deinen Controller.
+6. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (120 Ohm).
+
+ 
+## Falls Flashen nicht startet: Bootloader/Download‑Mode
+
+Manche Boards gehen automatisch in den Flash‑Mode, manche nicht. Dann:
+
+   BOOT gedrückt halten
+   EN/RESET kurz drücken
+   BOOT loslassen
+   Danach nochmal flashen.
+
 
 ---
 
