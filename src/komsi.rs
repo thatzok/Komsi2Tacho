@@ -1,7 +1,8 @@
-use defmt::{info, Format};
-use esp_hal::usb_serial_jtag::UsbSerialJtag;
+use defmt::{info, error, warn, debug, Format};
+use esp_hal::usb_serial_jtag::UsbSerialJtag; // Zurück auf USB-JTAG
 use esp_hal::Async;
-use embedded_io_async::Read;
+use embedded_io_async::{Read, Write};
+use crate::time::sync_system_time;
 
 #[derive(Debug, Format)]
 pub enum KomsiError {
@@ -23,37 +24,38 @@ pub struct KomsiDateTime {
 
 #[derive(Debug, Format)]
 pub enum Command {
-    Ignition(bool),         // A
-    Engine(bool),           // B
-    PassengerDoorsOpen(bool), // C
-    Indicator(u8),          // D (0: Off, 1: Left, 2: Right)
-    FixingBrake(bool),      // E
-    WarningLights(bool),    // F
-    MainLights(bool),       // G
-    FrontDoor(bool),        // H
-    SecondDoor(bool),       // I
-    ThirdDoor(bool),        // J
-    StopRequest(bool),      // K
-    StopBrake(bool),        // L
-    HighBeam(bool),         // M
-    BatteryLight(bool),     // N
-    SimulatorType(u8),      // O
-    DoorEnable(bool),       // P
-    Odometer(u64),          // o
-    DateTime(KomsiDateTime), // r
-    MaxSpeed(u32),          // s
-    RPM(u32),               // t
-    Pressure(u32),          // u
-    Temperature(u32),       // v
-    Oil(u32),               // w
-    Fuel(u8),               // x (0-100)
-    Speed(u32),             // y
-    Water(u32),             // z
+    Ignition(bool),           // A
+    Engine(bool),             // B
+    PassengerDoorsOpen(bool),   // C
+    Indicator(u8),            // D
+    FixingBrake(bool),        // E
+    WarningLights(bool),      // F
+    MainLights(bool),         // G
+    FrontDoor(bool),          // H
+    SecondDoor(bool),         // I
+    ThirdDoor(bool),          // J
+    StopRequest(bool),        // K
+    StopBrake(bool),          // L
+    HighBeam(bool),           // M
+    BatteryLight(bool),       // N
+    SimulatorType(u8),        // O
+    DoorEnable(bool),         // P
+    Odometer(u64),            // o
+    DateTime(KomsiDateTime),   // r
+    MaxSpeed(u32),            // s
+    RPM(u32),                 // t
+    Pressure(u32),            // u
+    Temperature(u32),         // v
+    Oil(u32),                 // w
+    Fuel(u8),                 // x
+    Speed(u32),               // y
+    Water(u32),               // z
 }
 
 impl Command {
     pub fn from_parts(cmd_char: char, digits: &[u8]) -> Result<Self, KomsiError> {
-        let value_u64 = parse_u64(digits)?;
+        // Falls kein Wert gesendet wurde (z.B. nur "A"), Standardwert 0
+        let value_u64 = if digits.is_empty() { 0 } else { parse_u64(digits)? };
 
         match cmd_char {
             'A' => Ok(Command::Ignition(value_u64 != 0)),
@@ -87,45 +89,36 @@ impl Command {
     }
 }
 
+// --- Parsing Hilfsfunktionen ---
+
 fn parse_u64(digits: &[u8]) -> Result<u64, KomsiError> {
-    if digits.is_empty() {
-        return Err(KomsiError::InvalidValue);
-    }
     let mut res: u64 = 0;
     for &d in digits {
-        let digit = (d - b'0') as u64;
+        let digit = d.checked_sub(b'0').ok_or(KomsiError::InvalidValue)? as u64;
+        if digit > 9 { return Err(KomsiError::InvalidValue); }
         res = res.saturating_mul(10).saturating_add(digit);
     }
     Ok(res)
 }
 
 fn parse_datetime(digits: &[u8]) -> Result<KomsiDateTime, KomsiError> {
-    if digits.len() != 14 {
-        return Err(KomsiError::InvalidDateTime);
-    }
-
-    let year = parse_slice_u16(&digits[0..4])?;
-    let month = parse_slice_u8(&digits[4..6])?;
-    let day = parse_slice_u8(&digits[6..8])?;
-    let hour = parse_slice_u8(&digits[8..10])?;
-    let min = parse_slice_u8(&digits[10..12])?;
-    let sec = parse_slice_u8(&digits[12..14])?;
-
+    if digits.len() != 14 { return Err(KomsiError::InvalidDateTime); }
     Ok(KomsiDateTime {
-        year,
-        month,
-        day,
-        hour,
-        min,
-        sec,
+        year:  parse_slice_u16(&digits[0..4])?,
+        month: parse_slice_u8(&digits[4..6])?,
+        day:   parse_slice_u8(&digits[6..8])?,
+        hour:  parse_slice_u8(&digits[8..10])?,
+        min:   parse_slice_u8(&digits[10..12])?,
+        sec:   parse_slice_u8(&digits[12..14])?,
     })
 }
 
 fn parse_slice_u8(slice: &[u8]) -> Result<u8, KomsiError> {
     let mut res: u8 = 0;
     for &d in slice {
+        let digit = d.checked_sub(b'0').ok_or(KomsiError::InvalidValue)?;
         res = res.checked_mul(10).ok_or(KomsiError::InvalidValue)?
-            .checked_add(d - b'0').ok_or(KomsiError::InvalidValue)?;
+            .checked_add(digit).ok_or(KomsiError::InvalidValue)?;
     }
     Ok(res)
 }
@@ -133,47 +126,49 @@ fn parse_slice_u8(slice: &[u8]) -> Result<u8, KomsiError> {
 fn parse_slice_u16(slice: &[u8]) -> Result<u16, KomsiError> {
     let mut res: u16 = 0;
     for &d in slice {
+        let digit = d.checked_sub(b'0').ok_or(KomsiError::InvalidValue)? as u16;
         res = res.checked_mul(10).ok_or(KomsiError::InvalidValue)?
-            .checked_add((d - b'0') as u16).ok_or(KomsiError::InvalidValue)?;
+            .checked_add(digit).ok_or(KomsiError::InvalidValue)?;
     }
     Ok(res)
 }
+
+// --- Der Task ---
+
 #[embassy_executor::task]
 pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
-    defmt::info!("KOMSI Task gestartet");
-    let mut buffer = [0u8; 64];
+    info!("KOMSI Task gestartet (Native USB)");
 
-    // Wir lagern den Parser-Zustand aus, um komsi_task übersichtlich zu halten
+    // Willkommensgruss senden
+    let _ = usb.write_all(b"\r\n--- KOMSI Interface Ready ---\r\n").await;
+
+    let mut buffer = [0u8; 64];
     let mut current_cmd: Option<char> = None;
     let mut digit_buffer = [0u8; 16];
     let mut digit_count = 0;
 
     loop {
-        // Nutze .read() statt .read_async() für esp-hal 1.0.0
         match usb.read(&mut buffer).await {
             Ok(len) if len > 0 => {
                 for &byte in &buffer[..len] {
-                    defmt::info!("Byte empfangen: {:x} ({})", byte, byte as char); // Debug-Log
+                    // Echo für Terminal-Feedback
+                    let _ = usb.write_all(&[byte]).await;
+
                     let c = byte as char;
                     if c.is_ascii_alphabetic() {
-                        // 1. Alten Befehl abschließen (falls vorhanden)
                         if let Some(cmd) = current_cmd {
                             komsi_dispatch(cmd, &digit_buffer[..digit_count]);
                         }
-                        // 2. Neuen Befehl vorbereiten
                         current_cmd = Some(c);
                         digit_count = 0;
                     }
                     else if c.is_ascii_digit() {
-                        if current_cmd.is_some() {
-                            if digit_count < digit_buffer.len() {
-                                digit_buffer[digit_count] = byte;
-                                digit_count += 1;
-                            }
+                        if current_cmd.is_some() && digit_count < digit_buffer.len() {
+                            digit_buffer[digit_count] = byte;
+                            digit_count += 1;
                         }
                     }
-                    else if c == '\n' || c == '\r' || c == ';' || c == ',' {
-                        // Trennzeichen schließt den aktuellen Befehl ab
+                    else if c == '\n' || c == '\r' || c == ';' || c == ' ' {
                         if let Some(cmd) = current_cmd {
                             komsi_dispatch(cmd, &digit_buffer[..digit_count]);
                             current_cmd = None;
@@ -181,26 +176,43 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
                         }
                     }
                 }
+                let _ = usb.flush().await;
             }
-            Ok(_) => {} // Leeres Lesen ignorieren
+            Ok(_) => {}
             Err(e) => {
-                defmt::error!("USB Read Error: {:?}", e);
-                // Kurze Pause, um bei Dauerfehlern die CPU nicht zu grillen
+                error!("USB Read Error: {:?}", e);
                 embassy_time::Timer::after_millis(100).await;
             }
         }
     }
 }
 
-
 fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
     match Command::from_parts(cmd_char, digits) {
         Ok(cmd) => {
-            info!("KOMSI Befehl: {:?}", cmd);
-            // TODO: Hier die Logik zur Ansteuerung des Tachos / TWAI einfügen
+            info!("KOMSI Befehl erkannt: {:?}", cmd);
+
+            // Hier wird der erkannte Befehl verarbeitet
+            match cmd {
+                Command::DateTime(dt) => {
+                    // Systemzeit mit dem empfangenen Datum synchronisieren
+                    sync_system_time(&dt);
+                },
+
+                // Hier kannst du später weitere Befehle für den CAN-Bus abgreifen
+                Command::Ignition(on) => {
+                    info!("Zündung wird auf {} gesetzt", on);
+                    // TODO: TWAI/CAN Paket senden
+                },
+
+                _ => {
+                    // Alle anderen Befehle, die noch keine spezifische Logik haben
+                    debug!("Befehl hat noch keine Ausführungslogik");
+                }
+            }
         }
         Err(e) => {
-            defmt::error!("KOMSI Fehler: {:?} bei Befehl {}", e, cmd_char);
+            error!("KOMSI Fehler: {:?} bei '{}'", e, cmd_char);
         }
     }
 }

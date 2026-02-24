@@ -13,6 +13,7 @@ path = "./src/bin/main.rs"
 
 [dependencies]
 j1939= { git = "https://github.com/thatzok/J1939" }
+portable-atomic = { version = "1.0", default-features = false }
 
 esp-hal = { version = "~1.0", features = ["defmt", "esp32c6", "unstable"] }
 embedded-can = "0.4.1"
