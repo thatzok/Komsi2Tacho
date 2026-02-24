@@ -1,20 +1,19 @@
 #![no_std]
 #![no_main]
 
-use defmt::{error, info, unwrap};
+use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Instant, Timer};
-use embedded_can::{Frame, Id};
+use embedded_can::Frame;
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::Io;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, EspTwaiFrame, ExtendedId, TwaiConfiguration, TwaiMode};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
-use esp_hal::Async;
+use Komsi2Tacho::can::{can_rx_task, can_send_frame, can_tx_task};
 use Komsi2Tacho::komsi::komsi_task;
-use Komsi2Tacho::time::{get_current_time_for_j1939, sync_system_time};
+use Komsi2Tacho::time::get_current_time_for_j1939;
 
-use nb::Error as NbError;
 use embedded_io_async::Read;
 
 #[panic_handler]
@@ -52,12 +51,21 @@ async fn main(spawner: Spawner) -> ! {
         peripherals.GPIO7, // TWAI_RX
         peripherals.GPIO6, // TWAI_TX
         BaudRate::B250K,
-        TwaiMode::Normal, //  Normaler Modus (Senden & Empfangen), für einen Selbsttest:TwaiMode::SelfTest 
+        TwaiMode::Normal, //  Normaler Modus (Senden & Empfangen), für einen Selbsttest:TwaiMode::SelfTest
     );
-      
-    
-    // Controller in den Betriebsmodus versetzen
-    let mut can = can_config.start();
+
+    // let mut twai = can_config.start().into_async();
+    // twai.start();
+    let can_config_async = can_config.into_async();
+    let mut twai = can_config_async.start();
+    // Hier den Treiber in Sender und Empfänger zerteilen
+    let (rx, tx) = twai.split();
+
+    // Beide Tasks separat starten
+    spawner.spawn(can_tx_task(tx)).unwrap();
+    spawner.spawn(can_rx_task(rx)).unwrap();
+
+    // spawner.spawn(can_tx_task(twai)).unwrap();
 
     info!("Komsi2Tacho: TWAI/CAN initialisiert (250k).");
 
@@ -100,16 +108,21 @@ async fn main(spawner: Spawner) -> ! {
                 let id = ExtendedId::new(j1939_id.as_raw()).unwrap();
                 let data = j1939_frame.pdu();
                 let frame = EspTwaiFrame::new(id, &data).unwrap();
+                can_send_frame(frame).await;
+                info!("Zyklisches TimeDate gesendet");
+                /*
                 match can.transmit(&frame) {
                     Ok(_) => info!("CAN TX: DateTime Frame"),
                     Err(NbError::WouldBlock) => error!("CAN TX: WouldBlock"),
                     Err(NbError::Other(e)) => error!("CAN TX Fehler: {:?}", e),
                 }
+                */
             }
 
             last_send = Instant::now();
         }
 
+        /*
         match can.receive() {
             Ok(frame) => {
                 // ID extrahieren (Standard oder Extended)
@@ -134,5 +147,7 @@ async fn main(spawner: Spawner) -> ! {
                 Timer::after(Duration::from_millis(500)).await;
             }
         }
+         */
+        Timer::after_millis(100).await; // Gibt dem Executor Zeit für andere Tasks!
     }
 }

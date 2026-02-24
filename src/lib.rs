@@ -2,3 +2,4 @@
 
 pub mod komsi;
 pub mod time;
+pub mod can;
