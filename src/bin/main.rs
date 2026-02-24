@@ -9,9 +9,11 @@ use esp_hal::clock::CpuClock;
 use esp_hal::gpio::Io;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, EspTwaiFrame, ExtendedId, TwaiConfiguration, TwaiMode};
-use esp_hal::uart::{Config as UartConfig, Uart};
-use Komsi2Tacho::komsi::{komsi_dispatch, KomsiParser};
+use esp_hal::usb_serial_jtag::UsbSerialJtag;
+use esp_hal::Async;
+use Komsi2Tacho::komsi::komsi_task;
 use nb::Error as NbError;
+use embedded_io_async::Read;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -20,24 +22,6 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
-#[embassy_executor::task]
-async fn komsi_task(mut uart: Uart<'static, esp_hal::Async>) {
-    let mut parser = KomsiParser::new();
-    let mut buffer = [0u8; 1];
-    loop {
-        match uart.read_async(&mut buffer).await {
-            Ok(_) => {
-                if let Some(cmd) = parser.parse_char(buffer[0] as char) {
-                    komsi_dispatch(cmd);
-                }
-            }
-            Err(e) => {
-                error!("UART Read Error: {:?}", e);
-            }
-        }
-    }
-}
-
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     rtt_target::rtt_init_defmt!();
@@ -45,18 +29,15 @@ async fn main(spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
+    // USB Serial JTAG Initialisierung
+    let usb_serial = UsbSerialJtag::new(peripherals.USB_DEVICE).into_async();
+    spawner.spawn(komsi_task(usb_serial)).unwrap();
+
     // RTOS / Embassy Setup
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     let sw_interrupt =
         esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
     esp_rtos::start(timg0.timer0, sw_interrupt.software_interrupt0);
-
-    // KOMSI UART Setup
-    let uart_config = UartConfig::default();
-    let uart0 = Uart::new(peripherals.UART0, uart_config)
-        .unwrap()
-        .into_async();
-    spawner.spawn(komsi_task(uart0)).unwrap();
 
     // Initialisierung der IO-Pins
     let _io = Io::new(peripherals.IO_MUX);

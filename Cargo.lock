@@ -11,6 +11,7 @@ dependencies = [
  "embassy-executor",
  "embassy-time",
  "embedded-can",
+ "embedded-io-async 0.6.1",
  "esp-alloc",
  "esp-bootloader-esp-idf",
  "esp-hal",
