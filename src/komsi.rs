@@ -196,7 +196,7 @@ fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
             match cmd {
                 Command::DateTime(dt) => {
                     // Systemzeit mit dem empfangenen Datum synchronisieren
-                    sync_system_time(&dt);
+                    sync_system_time(dt);
                 },
 
                 // Hier kannst du später weitere Befehle für den CAN-Bus abgreifen

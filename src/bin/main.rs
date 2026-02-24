@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use defmt::{error, info};
+use defmt::{error, info, unwrap};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Instant, Timer};
 use embedded_can::{Frame, Id};
@@ -12,6 +12,8 @@ use esp_hal::twai::{BaudRate, EspTwaiFrame, ExtendedId, TwaiConfiguration, TwaiM
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use esp_hal::Async;
 use Komsi2Tacho::komsi::komsi_task;
+use Komsi2Tacho::time::{get_current_time_for_j1939, sync_system_time};
+
 use nb::Error as NbError;
 use embedded_io_async::Read;
 
@@ -68,15 +70,41 @@ async fn main(spawner: Spawner) -> ! {
             // 18FEE6EE#243412024029837D
             // ID: 0x18FEE6EE (Extended)
             // Daten: 24 34 12 02 40 29 83 7D
+            // let id = ExtendedId::new(0x18FEE6EE).unwrap();
+            // let data = [0x24, 0x34, 0x12, 0x02, 0x40, 0x29, 0x83, 0x7D];
+            // let frame = EspTwaiFrame::new(id, &data).unwrap();
+            // match can.transmit(&frame) {
+            //    Ok(_) => info!("CAN TX: 18FEE6EE#243412024029837D"),
+            //    Err(NbError::WouldBlock) => error!("CAN TX: WouldBlock"),
+            //    Err(NbError::Other(e)) => error!("CAN TX Fehler: {:?}", e),
+            // }
 
-            let id = ExtendedId::new(0x18FEE6EE).unwrap();
-            let data = [0x24, 0x34, 0x12, 0x02, 0x40, 0x29, 0x83, 0x7D];
-            let frame = EspTwaiFrame::new(id, &data).unwrap();
+            if let Some(dt) = get_current_time_for_j1939() {
+                let timedate = j1939::spn::TimeDate {
+                    year: dt.year as i32,
+                    month: dt.month as u32,
+                    day: dt.day as u32,
+                    hour: dt.hour as u32,
+                    minute: dt.min as u32,
+                    second: dt.sec as u32,
+                    local_hour_offset: Some(0),
+                    local_minute_offset: Some(0),
+                };
+                let j1939_id = j1939::IdBuilder::from_pgn(j1939::PGN::TimeDate)
+                    .sa(0xee)
+                    .build();
+                let j1939_frame = j1939::FrameBuilder::new(j1939_id)
+                    .copy_from_slice(&timedate.to_pdu())
+                    .build();
 
-            match can.transmit(&frame) {
-                Ok(_) => info!("CAN TX: 18FEE6EE#243412024029837D"),
-                Err(NbError::WouldBlock) => error!("CAN TX: WouldBlock"),
-                Err(NbError::Other(e)) => error!("CAN TX Fehler: {:?}", e),
+                let id = ExtendedId::new(j1939_id.as_raw()).unwrap();
+                let data = j1939_frame.pdu();
+                let frame = EspTwaiFrame::new(id, &data).unwrap();
+                match can.transmit(&frame) {
+                    Ok(_) => info!("CAN TX: DateTime Frame"),
+                    Err(NbError::WouldBlock) => error!("CAN TX: WouldBlock"),
+                    Err(NbError::Other(e)) => error!("CAN TX Fehler: {:?}", e),
+                }
             }
 
             last_send = Instant::now();
