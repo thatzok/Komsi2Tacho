@@ -29,7 +29,7 @@ Zeitintervallen zu senden.
 
 1. Installiere den Rust Toolchainfür das **ESP32C6**
 2. Klone das Repository in deinen Workspace.
-3. Verbinde den USB-Anschluss mit der Beschriftung "ESP32C6"   (nicht "CH343") mit dem PC
+3. Verbinde einen oder beide USB-Anschlüsse (siehe PINOUT.md) mit dem PC
 4. Konfiguriere die projektspezifischen Parameter (z.B. CAN-Bitrate).
 5. `cargo run` - Flashe die Firmware auf deinen Controller.
 6. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (120 Ohm).

@@ -30,6 +30,16 @@ Der Tacho nutzt auf der Rückseite standardisierte ISO-Stecker (A, B, C, D), es 
 
 A1/A2/A3 werden mit 24V der Stromversorgung verbunden und A6 mit Masse/Minus der Stromversorgung verbunden.
 
+## 3. USB-Anschluss ESP32-C6 zum PC
+
+Das `nanoESP32‑C6 V1.0 Entwicklungsboard` besitzt zwei USB-Anschlüsse, von denen einer für Flashen, Status-Infos und
+Debugging und der andere für die KOMSI-Kommunikation mit dem PC verwendet wird.
+
+| USB    | Beschriftung auf Board | Funktion                                       | Notiz                                                             |
+|:-------|:-----------------------|:-----------------------------------------------|:------------------------------------------------------------------|
+| Native | `ESP32C6`              | In ESP32C6 integriert, JTAG-Debugging, Flashen | Nur zum Flashen und Debuggen anschliessen, sonst nicht notwendig. |
+| CH343  | `CH343`                | USB-to-Serial Anschluss (UART)                 | KOMSI-Befehle vom PC                                              |
+
 ## Wichtige Hinweise
 
 - **Terminierung:** Zwischen CAN-H und CAN-L müssen ca. 60 Ohm gemessen werden. Die preiswerten Transceiver haben
