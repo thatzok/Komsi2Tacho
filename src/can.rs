@@ -1,4 +1,4 @@
-use crate::komsi::komsi_task;
+use crate::komsi::{komsi_task, ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE};
 use crate::time::{get_current_time_for_j1939, sync_system_time};
 use defmt::{debug, error, info, unwrap};
 use embassy_executor::Spawner;
@@ -18,7 +18,6 @@ use j1939::spn::HighResolutionVehicleDistanceMessage;
 use j1939::spn::{DriverTimeRelatedStates, DriverWorkingState, TachographMessage};
 use j1939::IdBuilder;
 use j1939::PGN;
-
 
 // Kanal für 16 Frames - Puffer für "einmal alles senden"
 pub static CAN_TX_CHANNEL: Channel<CriticalSectionRawMutex, EspTwaiFrame, 16> = Channel::new();
@@ -64,7 +63,10 @@ pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
                 let source_address = id & 0xFF;
                 info!(
                     "RX ID: ID={:08X} PGN: {:05X} {:?} von {:02X}",
-                    id, pgn, defmt::Debug2Format(&j1939_id.pgn()),source_address
+                    id,
+                    pgn,
+                    defmt::Debug2Format(&j1939_id.pgn()),
+                    source_address
                 );
 
                 // Check auf die spezifische ID: 0x1CDEEE17
@@ -124,17 +126,20 @@ pub async fn send_hr_distance_message() {
         .sa(0xEE)
         .build();
 
+    let total_dist = TOTAL_DISTANCE.lock(|d| d.get());
+    let trip_dist = TRIP_DISTANCE.lock(|d| d.get());
+
     // 2. High Resolution Vehicle Distance Daten konstruieren (0000000000000000)
     // Dieses Paket enthält zwei Werte mit jeweils 4 Bytes (5 m/Bit Auflösung).
+    // Da J1939 hier oft u32 für m verwendet (bis 21M km), passen wir u64 entsprechend an.
     let msg = HighResolutionVehicleDistanceMessage {
-        total_vehicle_distance_m: Some(0), // Gesamtfahrstrecke in Metern
-        trip_distance_m: Some(0),          // Tagesfahrstrecke in Metern
+        total_vehicle_distance_m: Some(total_dist as u32), // Gesamtfahrstrecke in Metern
+        trip_distance_m: Some(trip_dist as u32),           // Tagesfahrstrecke in Metern
     };
 
     let frame = j1939::FrameBuilder::new(id)
         .copy_from_slice(&msg.to_pdu())
         .build();
-
 
     let twai_id = ExtendedId::new(id.as_raw()).unwrap();
     let twai_data = frame.pdu();
@@ -146,6 +151,7 @@ pub async fn send_hr_distance_message() {
 #[embassy_executor::task]
 pub async fn hr_distance_task() {
     loop {
+        calculate_distance_per_second();
         send_hr_distance_message().await;
         Timer::after(Duration::from_secs(1)).await;
     }
@@ -159,6 +165,8 @@ pub async fn tachograph_task() {
     }
 }
 pub async fn send_tachograph_message() {
+    let speed = ACTUAL_SPEED.lock(|s| s.get());
+    let max_speed = MAX_SPEED.lock(|s| s.get());
 
     // 1. Konstruiere die ID
     // Priorität 3, PGN Tachograph (65132), Source Address 0xEE
@@ -172,10 +180,10 @@ pub async fn send_tachograph_message() {
     let msg = TachographMessage {
         driver1_working_state: Some(DriverWorkingState::Drive),
         driver2_working_state: Some(DriverWorkingState::RestSleeping),
-        vehicle_motion: Some(true),
+        vehicle_motion: Some(speed > 0),
         driver1_time_states: None,
         driver1_card_present: Some(true),
-        vehicle_overspeed: None,
+        vehicle_overspeed: Some(max_speed > 0 && speed > max_speed),
         driver2_time_states: None,
         driver2_card_present: None,
         system_event: Some(true),
@@ -183,13 +191,12 @@ pub async fn send_tachograph_message() {
         tachograph_performance: None,
         direction_indicator: Some(true),
         tachograph_output_shaft_speed: Some(0),
-        tachograph_vehicle_speed: Some(20),
+        tachograph_vehicle_speed: Some(speed as u16),
     };
 
     let frame = j1939::FrameBuilder::new(id)
         .copy_from_slice(&msg.to_pdu())
         .build();
-
 
     let twai_id = ExtendedId::new(id.as_raw()).unwrap();
     let twai_data = frame.pdu();
@@ -204,6 +211,22 @@ pub async fn date_time_task() {
     loop {
         send_date_time_message().await;
         Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
+pub fn calculate_distance_per_second() {
+    let speed_kmh = ACTUAL_SPEED.lock(|s| s.get());
+    // Formula: meters_per_second = speed_kmh / 3.6
+    // To avoid floating point, we can use: meters = speed_kmh * 10 / 36
+    let meters_this_second = (speed_kmh as u64 * 10) / 36;
+
+    if meters_this_second > 0 {
+        TOTAL_DISTANCE.lock(|d| {
+            d.set(d.get().saturating_add(meters_this_second));
+        });
+        TRIP_DISTANCE.lock(|d| {
+            d.set(d.get().saturating_add(meters_this_second));
+        });
     }
 }
 pub async fn send_date_time_message() {
@@ -232,5 +255,3 @@ pub async fn send_date_time_message() {
         info!("Zyklisches TimeDate gesendet");
     }
 }
-
-    

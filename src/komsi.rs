@@ -3,6 +3,14 @@ use esp_hal::usb_serial_jtag::UsbSerialJtag; // Zurück auf USB-JTAG
 use esp_hal::Async;
 use embedded_io_async::{Read, Write};
 use crate::time::sync_system_time;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::blocking_mutex::Mutex;
+
+// Globale Variablen für Fahrzeugstatus
+pub static ACTUAL_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> = Mutex::new(core::cell::Cell::new(0));
+pub static MAX_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> = Mutex::new(core::cell::Cell::new(0));
+pub static TOTAL_DISTANCE: Mutex<CriticalSectionRawMutex, core::cell::Cell<u64>> = Mutex::new(core::cell::Cell::new(0));
+pub static TRIP_DISTANCE: Mutex<CriticalSectionRawMutex, core::cell::Cell<u64>> = Mutex::new(core::cell::Cell::new(0));
 
 #[derive(Debug, Format)]
 pub enum KomsiError {
@@ -197,6 +205,19 @@ fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
                 Command::DateTime(dt) => {
                     // Systemzeit mit dem empfangenen Datum synchronisieren
                     sync_system_time(dt);
+                },
+
+                Command::Speed(speed) => {
+                    ACTUAL_SPEED.lock(|s| s.set(speed));
+                },
+
+                Command::MaxSpeed(speed) => {
+                    MAX_SPEED.lock(|s| s.set(speed));
+                },
+
+                Command::Odometer(dist) => {
+                    TOTAL_DISTANCE.lock(|d| d.set(dist));
+                    TRIP_DISTANCE.lock(|d| d.set(0));
                 },
 
                 // Hier kannst du später weitere Befehle für den CAN-Bus abgreifen
