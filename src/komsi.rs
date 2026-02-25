@@ -1,16 +1,20 @@
-use defmt::{info, error, warn, debug, Format};
-use esp_hal::usb_serial_jtag::UsbSerialJtag; // Zurück auf USB-JTAG
-use esp_hal::Async;
-use embedded_io_async::{Read, Write};
 use crate::time::sync_system_time;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use defmt::{Format, debug, error, info, warn};
 use embassy_sync::blocking_mutex::Mutex;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embedded_io_async::{Read, Write};
+use esp_hal::Async;
+use esp_hal::usb_serial_jtag::UsbSerialJtag;
 
-// Globale Variablen für Fahrzeugstatus
-pub static ACTUAL_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> = Mutex::new(core::cell::Cell::new(0));
-pub static MAX_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> = Mutex::new(core::cell::Cell::new(0));
-pub static TOTAL_DISTANCE: Mutex<CriticalSectionRawMutex, core::cell::Cell<u64>> = Mutex::new(core::cell::Cell::new(0));
-pub static TRIP_DISTANCE: Mutex<CriticalSectionRawMutex, core::cell::Cell<u64>> = Mutex::new(core::cell::Cell::new(0));
+// "Global" Variables thread safe for vehicle state
+pub static ACTUAL_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> =
+    Mutex::new(core::cell::Cell::new(0));
+pub static MAX_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> =
+    Mutex::new(core::cell::Cell::new(0));
+pub static TOTAL_DISTANCE: Mutex<CriticalSectionRawMutex, core::cell::Cell<u64>> =
+    Mutex::new(core::cell::Cell::new(0));
+pub static TRIP_DISTANCE: Mutex<CriticalSectionRawMutex, core::cell::Cell<u64>> =
+    Mutex::new(core::cell::Cell::new(0));
 
 #[derive(Debug, Format)]
 pub enum KomsiError {
@@ -34,7 +38,7 @@ pub struct KomsiDateTime {
 pub enum Command {
     Ignition(bool),           // A
     Engine(bool),             // B
-    PassengerDoorsOpen(bool),   // C
+    PassengerDoorsOpen(bool), // C
     Indicator(u8),            // D
     FixingBrake(bool),        // E
     WarningLights(bool),      // F
@@ -49,7 +53,7 @@ pub enum Command {
     SimulatorType(u8),        // O
     DoorEnable(bool),         // P
     Odometer(u64),            // o
-    DateTime(KomsiDateTime),   // r
+    DateTime(KomsiDateTime),  // r
     MaxSpeed(u32),            // s
     RPM(u32),                 // t
     Pressure(u32),            // u
@@ -62,8 +66,12 @@ pub enum Command {
 
 impl Command {
     pub fn from_parts(cmd_char: char, digits: &[u8]) -> Result<Self, KomsiError> {
-        // Falls kein Wert gesendet wurde (z.B. nur "A"), Standardwert 0
-        let value_u64 = if digits.is_empty() { 0 } else { parse_u64(digits)? };
+        // default value 0 if we do not received a value
+        let value_u64 = if digits.is_empty() {
+            0
+        } else {
+            parse_u64(digits)?
+        };
 
         match cmd_char {
             'A' => Ok(Command::Ignition(value_u64 != 0)),
@@ -97,27 +105,31 @@ impl Command {
     }
 }
 
-// --- Parsing Hilfsfunktionen ---
+// Helperfunctions for Parsing
 
 fn parse_u64(digits: &[u8]) -> Result<u64, KomsiError> {
     let mut res: u64 = 0;
     for &d in digits {
         let digit = d.checked_sub(b'0').ok_or(KomsiError::InvalidValue)? as u64;
-        if digit > 9 { return Err(KomsiError::InvalidValue); }
+        if digit > 9 {
+            return Err(KomsiError::InvalidValue);
+        }
         res = res.saturating_mul(10).saturating_add(digit);
     }
     Ok(res)
 }
 
 fn parse_datetime(digits: &[u8]) -> Result<KomsiDateTime, KomsiError> {
-    if digits.len() != 14 { return Err(KomsiError::InvalidDateTime); }
+    if digits.len() != 14 {
+        return Err(KomsiError::InvalidDateTime);
+    }
     Ok(KomsiDateTime {
-        year:  parse_slice_u16(&digits[0..4])?,
+        year: parse_slice_u16(&digits[0..4])?,
         month: parse_slice_u8(&digits[4..6])?,
-        day:   parse_slice_u8(&digits[6..8])?,
-        hour:  parse_slice_u8(&digits[8..10])?,
-        min:   parse_slice_u8(&digits[10..12])?,
-        sec:   parse_slice_u8(&digits[12..14])?,
+        day: parse_slice_u8(&digits[6..8])?,
+        hour: parse_slice_u8(&digits[8..10])?,
+        min: parse_slice_u8(&digits[10..12])?,
+        sec: parse_slice_u8(&digits[12..14])?,
     })
 }
 
@@ -125,8 +137,11 @@ fn parse_slice_u8(slice: &[u8]) -> Result<u8, KomsiError> {
     let mut res: u8 = 0;
     for &d in slice {
         let digit = d.checked_sub(b'0').ok_or(KomsiError::InvalidValue)?;
-        res = res.checked_mul(10).ok_or(KomsiError::InvalidValue)?
-            .checked_add(digit).ok_or(KomsiError::InvalidValue)?;
+        res = res
+            .checked_mul(10)
+            .ok_or(KomsiError::InvalidValue)?
+            .checked_add(digit)
+            .ok_or(KomsiError::InvalidValue)?;
     }
     Ok(res)
 }
@@ -135,20 +150,23 @@ fn parse_slice_u16(slice: &[u8]) -> Result<u16, KomsiError> {
     let mut res: u16 = 0;
     for &d in slice {
         let digit = d.checked_sub(b'0').ok_or(KomsiError::InvalidValue)? as u16;
-        res = res.checked_mul(10).ok_or(KomsiError::InvalidValue)?
-            .checked_add(digit).ok_or(KomsiError::InvalidValue)?;
+        res = res
+            .checked_mul(10)
+            .ok_or(KomsiError::InvalidValue)?
+            .checked_add(digit)
+            .ok_or(KomsiError::InvalidValue)?;
     }
     Ok(res)
 }
 
-// --- Der Task ---
-
 #[embassy_executor::task]
 pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
-    info!("KOMSI Task gestartet (Native USB)");
+    info!("KOMSI Task started");
 
-    // Willkommensgruss senden
-    let _ = usb.write_all(b"\r\n--- KOMSI Interface Ready ---\r\n").await;
+    // Send welcome message
+    let _ = usb
+        .write_all(b"\r\n--- KOMSI Interface Ready ---\r\n")
+        .await;
 
     let mut buffer = [0u8; 64];
     let mut current_cmd: Option<char> = None;
@@ -159,7 +177,7 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
         match usb.read(&mut buffer).await {
             Ok(len) if len > 0 => {
                 for &byte in &buffer[..len] {
-                    // Echo für Terminal-Feedback
+                    // Echo for terminal feedback
                     let _ = usb.write_all(&[byte]).await;
 
                     let c = byte as char;
@@ -169,14 +187,12 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
                         }
                         current_cmd = Some(c);
                         digit_count = 0;
-                    }
-                    else if c.is_ascii_digit() {
+                    } else if c.is_ascii_digit() {
                         if current_cmd.is_some() && digit_count < digit_buffer.len() {
                             digit_buffer[digit_count] = byte;
                             digit_count += 1;
                         }
-                    }
-                    else if c == '\n' || c == '\r' || c == ';' || c == ' ' {
+                    } else if c == '\n' || c == '\r' || c == ';' || c == ' ' {
                         if let Some(cmd) = current_cmd {
                             komsi_dispatch(cmd, &digit_buffer[..digit_count]);
                             current_cmd = None;
@@ -198,42 +214,44 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
 fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
     match Command::from_parts(cmd_char, digits) {
         Ok(cmd) => {
-            info!("KOMSI Befehl erkannt: {:?}", cmd);
+            info!("KOMSI command detected: {:?}", cmd);
 
-            // Hier wird der erkannte Befehl verarbeitet
+            // Process the detected command here
             match cmd {
                 Command::DateTime(dt) => {
-                    // Systemzeit mit dem empfangenen Datum synchronisieren
+                    // Synchronize system time with the received date
                     sync_system_time(dt);
-                },
+                }
 
                 Command::Speed(speed) => {
-                    ACTUAL_SPEED.lock(|s| s.set(speed));
-                },
+                    // we make sure the tacho never shows more than 125 km/h because we do not want to damage the needle
+                    let safe_speed = if speed > 125 { 125 } else { speed };
+                    ACTUAL_SPEED.lock(|s| s.set(safe_speed));
+                }
 
                 Command::MaxSpeed(speed) => {
                     MAX_SPEED.lock(|s| s.set(speed));
-                },
+                }
 
                 Command::Odometer(dist) => {
                     TOTAL_DISTANCE.lock(|d| d.set(dist));
                     TRIP_DISTANCE.lock(|d| d.set(0));
-                },
+                }
 
-                // Hier kannst du später weitere Befehle für den CAN-Bus abgreifen
+                // We could add more commands here, if we want
+                // for now, just some input message as example
                 Command::Ignition(on) => {
-                    info!("Zündung wird auf {} gesetzt", on);
-                    // TODO: TWAI/CAN Paket senden
-                },
+                    info!("Ignition set to {}", on);
+                }
 
                 _ => {
-                    // Alle anderen Befehle, die noch keine spezifische Logik haben
-                    debug!("Befehl hat noch keine Ausführungslogik");
+                    // All other commands that do not have specific logic yet
+                    // silently do nothing
                 }
             }
         }
         Err(e) => {
-            error!("KOMSI Fehler: {:?} bei '{}'", e, cmd_char);
+            error!("KOMSI error: {:?} at '{}'", e, cmd_char);
         }
     }
 }

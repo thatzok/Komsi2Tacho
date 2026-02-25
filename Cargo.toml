@@ -1,8 +1,8 @@
 [package]
-name         = "Komsi2Tacho"
-edition      = "2024"
+name = "Komsi2Tacho"
+edition = "2024"
 rust-version = "1.88"
-version      = "0.1.0"
+version = "0.1.0"
 authors = ["ThatZok <af@komplix.de>"]
 license = "GPL-3.0-or-later"
 license-file = "LICENSE"
@@ -11,34 +11,35 @@ license-file = "LICENSE"
 name = "komsi2tacho"
 path = "./src/bin/main.rs"
 
+[lints.clippy]
+# deny dangerous patterns (should be allowed in tests, we do want panics in tests as feedback)
+unwrap_used = "warn"  # warn instead of deny for fix check
+todo = "deny"         # we should be finished before publishing
+dbg_macro = "deny"    # no remaining debug output in production
+panic = "deny"        # panics() in production are bad
+similar_names = "allow"
+
 [dependencies]
-j1939= { git = "https://github.com/thatzok/J1939" }
-portable-atomic = { version = "1.0", default-features = false }
+j1939 = { git = "https://github.com/thatzok/J1939" }
+portable-atomic = { version = "1.0", features = ["critical-section"] }
 
 esp-hal = { version = "~1.0", features = ["defmt", "esp32c6", "unstable"] }
 embedded-can = "0.4.1"
 
 esp-rtos = { version = "0.2.0", features = [
-  "defmt",
-  "embassy",
-  "esp-alloc",
-  "esp32c6",
+    "defmt",
+    "embassy",
+    "esp-alloc",
+    "esp32c6",
 ] }
 
-defmt                  = "1.0.1"
+defmt = "1.0.1"
 esp-bootloader-esp-idf = { version = "0.4.0", features = ["defmt", "esp32c6"] }
 
 embassy-executor = { version = "0.9.1", features = ["defmt"] }
-embassy-time     = { version = "0.5.0", features = ["defmt"] }
-esp-alloc        = { version = "0.9.0", features = ["defmt"] }
-rtt-target       = { version = "0.6.2", features = ["defmt"] }
+embassy-time = { version = "0.5.0", features = ["defmt"] }
+rtt-target = { version = "0.6.2", features = ["defmt"] }
 
-critical-section = "1.2.0"
-static_cell      = "2.1.1"
-
-esp-hal-smartled = { git = "https://github.com/esp-rs/esp-hal-community", features = ["esp32c6"] }
-smart-leds = "0.4.0"
-nb = "1.1.0"
 embedded-io-async = "0.6.1"
 spin = "0.10.0"
 embassy-sync = "0.6.2"
@@ -50,10 +51,10 @@ embassy-sync = "0.6.2"
 opt-level = "s"
 
 [profile.release]
-codegen-units    = 1     # LLVM can perform better optimizations using a single thread
-debug            = 2
+codegen-units = 1     # LLVM can perform better optimizations using a single thread
+debug = 2
 debug-assertions = false
-incremental      = false
-lto              = 'fat'
-opt-level        = 's'
-overflow-checks  = false
+incremental = false
+lto = 'fat'
+opt-level = 's'
+overflow-checks = false

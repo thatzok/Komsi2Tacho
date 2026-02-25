@@ -1,0 +1,21 @@
+# clippy.toml
+
+too-many-lines-threshold = 120
+too-many-arguments-threshold = 8
+
+allow-expect-in-tests = true
+
+disallowed-names = ["toto", "tata"]
+
+cognitive-complexity-threshold = 20
+
+msrv = "1.92.0"
+
+disallowed-methods = [
+    { path = "std::env::set_var", reason = "Not thread safe use config-opjets instead" },
+    { path = "std::mem::forget", reason = "risk of mem leaks, instead use Box or ManuallyDrop" }
+]
+
+disallowed-types = [
+    { path = "std::cell::RefCell", reason = "better use Mutex for thread security" }
+]

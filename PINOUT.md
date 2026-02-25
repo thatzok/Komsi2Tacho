@@ -53,5 +53,5 @@ Debugging und der andere für die KOMSI-Kommunikation mit dem PC verwendet wird.
   andere Varianten teils erheblich angepasste werden.
 - Aktuell genutztes Board: `nanoESP32‑C6 V1.0 Entwicklungsboard`
 - Aktuell genutzter CAN-Bus-Transceiver: `SN65HVD230`. Es ist wichtig, dass es ein VD230-Typ ist, andere kommen mit der
-  3,3 Volt Versorgunsspannung des ESP32 evtl. nicht zuverlässig genug auf die notwendigen Spannungen des CAN-BUS.
+  3,3 Volt Versorgungsspannung des ESP32 evtl. nicht zuverlässig genug auf die notwendigen Spannungen des CAN-BUS.
  
