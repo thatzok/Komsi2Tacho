@@ -114,7 +114,7 @@ pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
     }
 }
 
-pub async fn send_hr_distance_message(total_vehicle_distance: u32, trip_distance: u32) {
+pub async fn send_hr_distance_message() {
     // 1. CAN-ID konstruieren (0x18FEC1EE)
     // Priorität: 6 (Standard für Broadcast-PGNs in dieser Range)
     // PGN: High Resolution Vehicle Distance (65217 / 0xFEC1)
@@ -146,7 +146,7 @@ pub async fn send_hr_distance_message(total_vehicle_distance: u32, trip_distance
 #[embassy_executor::task]
 pub async fn hr_distance_task() {
     loop {
-        send_hr_distance_message(0, 0).await;
+        send_hr_distance_message().await;
         Timer::after(Duration::from_secs(1)).await;
     }
 }
@@ -154,11 +154,11 @@ pub async fn hr_distance_task() {
 #[embassy_executor::task]
 pub async fn tachograph_task() {
     loop {
-        send_tachograph_message(0, 0).await;
+        send_tachograph_message().await;
         Timer::after(Duration::from_millis(50)).await;
     }
 }
-pub async fn send_tachograph_message(total_vehicle_distance: u32, trip_distance: u32) {
+pub async fn send_tachograph_message() {
 
     // 1. Konstruiere die ID
     // Priorität 3, PGN Tachograph (65132), Source Address 0xEE
