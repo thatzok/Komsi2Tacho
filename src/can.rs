@@ -1,23 +1,20 @@
-use crate::komsi::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, komsi_task};
-use crate::time::{get_current_time_for_j1939, sync_system_time};
-use defmt::{debug, error, info, unwrap};
-use embassy_executor::Spawner;
+use crate::komsi::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
+use crate::time::get_current_time_for_j1939;
+use core::fmt::Write as _;
+use defmt::{error, info};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Duration, Timer};
 use embedded_can::{Frame, Id};
 use esp_hal::Async;
-use esp_hal::clock::CpuClock;
-use esp_hal::gpio::Io;
-use esp_hal::timer::timg::TimerGroup;
-use esp_hal::twai::{BaudRate, EspTwaiFrame, ExtendedId, TwaiConfiguration, TwaiMode};
+use esp_hal::twai::{EspTwaiFrame, ExtendedId};
 use esp_hal::twai::{TwaiRx, TwaiTx};
-use esp_hal::usb_serial_jtag::UsbSerialJtag;
+use heapless::String;
 
 use j1939::IdBuilder;
 use j1939::PGN;
 use j1939::spn::{AcknowledgmentMessage, AcknowledgmentType, HighResolutionVehicleDistanceMessage};
-use j1939::spn::{DriverTimeRelatedStates, DriverWorkingState, TachographMessage};
+use j1939::spn::{DriverWorkingState, TachographMessage};
 
 // Channel for 16 frames - buffer for "sending everything once"
 // 16 frames is more than enough for our use case
@@ -36,6 +33,9 @@ pub async fn can_tx_task(mut tx: TwaiTx<'static, Async>) {
         let frame = CAN_TX_CHANNEL.receive().await;
         if let Err(e) = tx.transmit_async(&frame).await {
             error!("CAN TX Error: {:?}", e);
+            let mut s: String<64> = String::new();
+            let _ = write!(s, "ERR: CAN TX Error: {:?}", e);
+            usb_write_dynamic(s);
         }
     }
 }
@@ -74,6 +74,9 @@ pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
             }
             Err(e) => {
                 error!("CAN RX hardware error: {:?}", e);
+                let mut s: String<64> = String::new();
+                let _ = write!(s, "ERR: CAN RX Error: {:?}", e);
+                usb_write_dynamic(s);
                 embassy_time::Timer::after_millis(100).await;
             }
         }

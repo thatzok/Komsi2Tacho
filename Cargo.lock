@@ -3,25 +3,6 @@
 version = 4
 
 [[package]]
-name = "Komsi2Tacho"
-version = "0.1.0"
-dependencies = [
- "defmt 1.0.1",
- "embassy-executor",
- "embassy-sync 0.6.2",
- "embassy-time",
- "embedded-can",
- "embedded-io-async 0.6.1",
- "esp-bootloader-esp-idf",
- "esp-hal",
- "esp-rtos",
- "j1939",
- "portable-atomic",
- "rtt-target",
- "spin",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -972,6 +953,27 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "komsi2tacho"
+version = "0.2.0"
+dependencies = [
+ "defmt 1.0.1",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-sync 0.6.2",
+ "embassy-time",
+ "embedded-can",
+ "embedded-io-async 0.6.1",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-rtos",
+ "heapless",
+ "j1939",
+ "portable-atomic",
+ "rtt-target",
+ "spin",
 ]
 
 [[package]]

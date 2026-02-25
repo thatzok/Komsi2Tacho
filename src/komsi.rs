@@ -1,10 +1,40 @@
 use crate::time::sync_system_time;
-use defmt::{Format, debug, error, info, warn};
+use defmt::{Format, error, info};
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::channel::Channel;
 use embedded_io_async::{Read, Write};
 use esp_hal::Async;
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
+use heapless::String;
+
+#[derive(Debug)]
+pub enum UsbMsg {
+    Static(&'static str),
+    Dynamic(String<64>),
+}
+
+impl defmt::Format for UsbMsg {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            UsbMsg::Static(s) => defmt::write!(fmt, "Static({:?})", s),
+            UsbMsg::Dynamic(s) => defmt::write!(fmt, "Dynamic({:?})", s.as_str()),
+        }
+    }
+}
+
+// Channel for USB outgoing messages
+pub static USB_TX_CHANNEL: Channel<CriticalSectionRawMutex, UsbMsg, 8> = Channel::new();
+
+/// Helper to send a message to the USB output channel
+pub fn usb_write(msg: &'static str) {
+    let _ = USB_TX_CHANNEL.try_send(UsbMsg::Static(msg));
+}
+
+/// Helper to send a dynamic message to the USB output channel
+pub fn usb_write_dynamic(msg: String<64>) {
+    let _ = USB_TX_CHANNEL.try_send(UsbMsg::Dynamic(msg));
+}
 
 // "Global" Variables thread safe for vehicle state
 pub static ACTUAL_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> =
@@ -181,38 +211,56 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
     let mut digit_count = 0;
 
     loop {
-        match usb.read(&mut buffer).await {
-            Ok(len) if len > 0 => {
-                for &byte in &buffer[..len] {
-                    // Echo for terminal feedback
-                    let _ = usb.write_all(&[byte]).await;
+        use embassy_futures::select::{Either, select};
 
-                    let c = byte as char;
-                    if c.is_ascii_alphabetic() {
-                        if let Some(cmd) = current_cmd {
-                            komsi_dispatch(cmd, &digit_buffer[..digit_count]);
+        match select(usb.read(&mut buffer), USB_TX_CHANNEL.receive()).await {
+            Either::First(read_result) => {
+                match read_result {
+                    Ok(len) if len > 0 => {
+                        for &byte in &buffer[..len] {
+                            // Echo for terminal feedback
+                            // no echo let _ = usb.write_all(&[byte]).await;
+
+                            let c = byte as char;
+                            if c.is_ascii_alphabetic() {
+                                if let Some(cmd) = current_cmd {
+                                    komsi_dispatch(cmd, &digit_buffer[..digit_count]);
+                                }
+                                current_cmd = Some(c);
+                                digit_count = 0;
+                            } else if c.is_ascii_digit() {
+                                if current_cmd.is_some() && digit_count < digit_buffer.len() {
+                                    digit_buffer[digit_count] = byte;
+                                    digit_count += 1;
+                                }
+                            } else if c == '\n' || c == '\r' || c == ';' || c == ' ' {
+                                if let Some(cmd) = current_cmd {
+                                    komsi_dispatch(cmd, &digit_buffer[..digit_count]);
+                                    current_cmd = None;
+                                    digit_count = 0;
+                                }
+                            }
                         }
-                        current_cmd = Some(c);
-                        digit_count = 0;
-                    } else if c.is_ascii_digit() {
-                        if current_cmd.is_some() && digit_count < digit_buffer.len() {
-                            digit_buffer[digit_count] = byte;
-                            digit_count += 1;
-                        }
-                    } else if c == '\n' || c == '\r' || c == ';' || c == ' ' {
-                        if let Some(cmd) = current_cmd {
-                            komsi_dispatch(cmd, &digit_buffer[..digit_count]);
-                            current_cmd = None;
-                            digit_count = 0;
-                        }
+                        let _ = usb.flush().await;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("USB Read Error: {:?}", e);
+                        embassy_time::Timer::after_millis(100).await;
                     }
                 }
-                let _ = usb.flush().await;
             }
-            Ok(_) => {}
-            Err(e) => {
-                error!("USB Read Error: {:?}", e);
-                embassy_time::Timer::after_millis(100).await;
+            Either::Second(msg) => {
+                match msg {
+                    UsbMsg::Static(s) => {
+                        let _ = usb.write_all(s.as_bytes()).await;
+                    }
+                    UsbMsg::Dynamic(s) => {
+                        let _ = usb.write_all(s.as_bytes()).await;
+                    }
+                }
+                let _ = usb.write_all(b"\r\n").await;
+                let _ = usb.flush().await;
             }
         }
     }
@@ -221,44 +269,54 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
 fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
     match Command::from_parts(cmd_char, digits) {
         Ok(cmd) => {
-            info!("KOMSI command detected: {:?}", cmd);
+            // info!("KOMSI command detected: {:?}", cmd);
 
             // Process the detected command here
             match cmd {
                 Command::DateTime(dt) => {
                     // Synchronize system time with the received date
                     sync_system_time(dt);
+                    // usb_write("OK: DateTime synchronized");
                 }
 
                 Command::Speed(speed) => {
                     // we make sure the tacho never shows more than 125 km/h because we do not want to damage the needle
                     let safe_speed = if speed > 125 { 125 } else { speed };
                     ACTUAL_SPEED.lock(|s| s.set(safe_speed));
+                    // usb_write("OK: Speed set");
                 }
 
                 Command::MaxSpeed(speed) => {
                     MAX_SPEED.lock(|s| s.set(speed));
+                    // usb_write("OK: MaxSpeed set");
                 }
 
                 Command::Odometer(dist) => {
                     TOTAL_DISTANCE.lock(|d| d.set(dist));
                     TRIP_DISTANCE.lock(|d| d.set(0));
+                    // usb_write("OK: Odometer set");
                 }
 
                 // We could add more commands here, if we want
                 // for now, just some input message as example
                 Command::Ignition(on) => {
                     info!("Ignition set to {}", on);
+                    // usb_write(if on {
+                    //    "OK: Ignition ON"
+                    // } else {
+                    //    "OK: Ignition OFF"
+                    // });
                 }
 
                 _ => {
                     // All other commands that do not have specific logic yet
-                    // silently do nothing
+                    // usb_write("OK: Command received");
                 }
             }
         }
         Err(e) => {
             error!("KOMSI error: {:?} at '{}'", e, cmd_char);
+            // usb_write("ERR: Invalid KOMSI command");
         }
     }
 }

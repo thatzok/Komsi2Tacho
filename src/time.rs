@@ -1,6 +1,5 @@
 use crate::komsi::KomsiDateTime;
 use embassy_time::Instant;
-use portable_atomic::{AtomicU64, Ordering};
 
 // if we would use AtomicU32 instead of AtomicU64 we would not need "portable_atomic" crate,
 // but then we would get a timestamp overflow after 49,7 days. The simulation will probably

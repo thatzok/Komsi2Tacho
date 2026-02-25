@@ -1,22 +1,19 @@
 #![no_std]
 #![no_main]
 
-use Komsi2Tacho::can::{
-    can_rx_task, can_tx_task, date_time_task, hr_distance_task, tachograph_task,
-};
-use Komsi2Tacho::komsi::{KomsiDateTime, komsi_task};
-use Komsi2Tacho::time::sync_system_time;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::Timer;
-use embedded_can::Frame;
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::Io;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, TwaiConfiguration, TwaiMode};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
-
-use embedded_io_async::Read;
+use komsi2tacho::can::{
+    can_rx_task, can_tx_task, date_time_task, hr_distance_task, tachograph_task,
+};
+use komsi2tacho::komsi::{KomsiDateTime, komsi_task, usb_write};
+use komsi2tacho::time::sync_system_time;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -71,7 +68,7 @@ async fn main(spawner: Spawner) -> ! {
     // now we initialize the CAN bus
     // a bit tricky, took some time to find out the right way
     let can_config_async = can_config.into_async();
-    let mut twai = can_config_async.start();
+    let twai = can_config_async.start();
 
     // Split the driver into sender and receiver here
     let (rx, tx) = twai.split();
@@ -87,6 +84,8 @@ async fn main(spawner: Spawner) -> ! {
         "Komsi2Tacho Version {}: TWAI/CAN initialized (250k).",
         env!("CARGO_PKG_VERSION")
     );
+
+    usb_write("Komsi2Tacho: CAN-Bus started (250 kbit/s).");
 
     // we do nothing in main loop, all work is done by tasks
     loop {

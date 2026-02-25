@@ -1,11 +1,11 @@
 [package]
-name = "Komsi2Tacho"
+name = "komsi2tacho"
 edition = "2024"
 rust-version = "1.88"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["ThatZok <af@komplix.de>"]
 license = "GPL-3.0-or-later"
-license-file = "LICENSE"
+
 
 [[bin]]
 name = "komsi2tacho"
@@ -43,6 +43,8 @@ rtt-target = { version = "0.6.2", features = ["defmt"] }
 embedded-io-async = "0.6.1"
 spin = "0.10.0"
 embassy-sync = "0.6.2"
+embassy-futures = "0.1.1"
+heapless = "0.8.0"
 
 
 [profile.dev]
