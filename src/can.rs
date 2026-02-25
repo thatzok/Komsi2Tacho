@@ -14,6 +14,12 @@ use esp_hal::twai::{TwaiRx, TwaiTx};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use esp_hal::Async;
 
+use j1939::spn::HighResolutionVehicleDistanceMessage;
+use j1939::spn::{DriverTimeRelatedStates, DriverWorkingState, TachographMessage};
+use j1939::IdBuilder;
+use j1939::PGN;
+
+
 // Kanal für 16 Frames - Puffer für "einmal alles senden"
 pub static CAN_TX_CHANNEL: Channel<CriticalSectionRawMutex, EspTwaiFrame, 16> = Channel::new();
 
@@ -53,10 +59,12 @@ pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
 
                 // J1939 PGN extrahieren (Bits 8-25 der 29-Bit ID)
                 let pgn = (id >> 8) & 0x3FFFF;
+
+                let j1939_id = j1939::Id::new(id);
                 let source_address = id & 0xFF;
                 info!(
-                    "RX ID: ID={:08X} PGN: {:05X} von {:02X}",
-                    id, pgn, source_address
+                    "RX ID: ID={:08X} PGN: {:05X} {:?} von {:02X}",
+                    id, pgn, defmt::Debug2Format(&j1939_id.pgn()),source_address
                 );
 
                 // Check auf die spezifische ID: 0x1CDEEE17
@@ -105,3 +113,124 @@ pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
         }
     }
 }
+
+pub async fn send_hr_distance_message(total_vehicle_distance: u32, trip_distance: u32) {
+    // 1. CAN-ID konstruieren (0x18FEC1EE)
+    // Priorität: 6 (Standard für Broadcast-PGNs in dieser Range)
+    // PGN: High Resolution Vehicle Distance (65217 / 0xFEC1)
+    // Source Address: 238 (0xEE)
+    let id = IdBuilder::from_pgn(PGN::HighResolutionVehicleDistance)
+        .priority(6)
+        .sa(0xEE)
+        .build();
+
+    // 2. High Resolution Vehicle Distance Daten konstruieren (0000000000000000)
+    // Dieses Paket enthält zwei Werte mit jeweils 4 Bytes (5 m/Bit Auflösung).
+    let msg = HighResolutionVehicleDistanceMessage {
+        total_vehicle_distance_m: Some(0), // Gesamtfahrstrecke in Metern
+        trip_distance_m: Some(0),          // Tagesfahrstrecke in Metern
+    };
+
+    let frame = j1939::FrameBuilder::new(id)
+        .copy_from_slice(&msg.to_pdu())
+        .build();
+
+
+    let twai_id = ExtendedId::new(id.as_raw()).unwrap();
+    let twai_data = frame.pdu();
+    let twai_frame = EspTwaiFrame::new(twai_id, &twai_data).unwrap();
+    can_send_frame(twai_frame).await;
+    info!("HighResolutionVehicleDistanceMessage gesendet");
+}
+
+#[embassy_executor::task]
+pub async fn hr_distance_task() {
+    loop {
+        send_hr_distance_message(0, 0).await;
+        Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
+#[embassy_executor::task]
+pub async fn tachograph_task() {
+    loop {
+        send_tachograph_message(0, 0).await;
+        Timer::after(Duration::from_millis(50)).await;
+    }
+}
+pub async fn send_tachograph_message(total_vehicle_distance: u32, trip_distance: u32) {
+
+    // 1. Konstruiere die ID
+    // Priorität 3, PGN Tachograph (65132), Source Address 0xEE
+    let id = IdBuilder::from_pgn(PGN::Tachograph)
+        .priority(3)
+        .sa(0xEE)
+        .build();
+
+    // 2. Konstruiere die Tachograph-Nachricht
+    // Basierend auf den Daten 00FFFFC100000000
+    let msg = TachographMessage {
+        driver1_working_state: Some(DriverWorkingState::Drive),
+        driver2_working_state: Some(DriverWorkingState::RestSleeping),
+        vehicle_motion: Some(true),
+        driver1_time_states: None,
+        driver1_card_present: Some(true),
+        vehicle_overspeed: None,
+        driver2_time_states: None,
+        driver2_card_present: None,
+        system_event: Some(true),
+        handling_information: Some(false),
+        tachograph_performance: None,
+        direction_indicator: Some(true),
+        tachograph_output_shaft_speed: Some(0),
+        tachograph_vehicle_speed: Some(20),
+    };
+
+    let frame = j1939::FrameBuilder::new(id)
+        .copy_from_slice(&msg.to_pdu())
+        .build();
+
+
+    let twai_id = ExtendedId::new(id.as_raw()).unwrap();
+    let twai_data = frame.pdu();
+    let twai_frame = EspTwaiFrame::new(twai_id, &twai_data).unwrap();
+    can_send_frame(twai_frame).await;
+
+    // info!("TachographMessage gesendet");
+}
+
+#[embassy_executor::task]
+pub async fn date_time_task() {
+    loop {
+        send_date_time_message().await;
+        Timer::after(Duration::from_secs(1)).await;
+    }
+}
+pub async fn send_date_time_message() {
+    if let Some(dt) = get_current_time_for_j1939() {
+        let timedate = j1939::spn::TimeDate {
+            year: dt.year as i32,
+            month: dt.month as u32,
+            day: dt.day as u32,
+            hour: dt.hour as u32,
+            minute: dt.min as u32,
+            second: dt.sec as u32,
+            local_hour_offset: Some(0),
+            local_minute_offset: Some(0),
+        };
+        let j1939_id = j1939::IdBuilder::from_pgn(j1939::PGN::TimeDate)
+            .sa(0xee)
+            .build();
+        let j1939_frame = j1939::FrameBuilder::new(j1939_id)
+            .copy_from_slice(&timedate.to_pdu())
+            .build();
+
+        let id = ExtendedId::new(j1939_id.as_raw()).unwrap();
+        let data = j1939_frame.pdu();
+        let frame = EspTwaiFrame::new(id, &data).unwrap();
+        can_send_frame(frame).await;
+        info!("Zyklisches TimeDate gesendet");
+    }
+}
+
+    
