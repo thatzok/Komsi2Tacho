@@ -16,7 +16,7 @@ use esp_hal::usb_serial_jtag::UsbSerialJtag;
 
 use j1939::IdBuilder;
 use j1939::PGN;
-use j1939::spn::HighResolutionVehicleDistanceMessage;
+use j1939::spn::{AcknowledgmentMessage, AcknowledgmentType, HighResolutionVehicleDistanceMessage};
 use j1939::spn::{DriverTimeRelatedStates, DriverWorkingState, TachographMessage};
 
 // Channel for 16 frames - buffer for "sending everything once"
@@ -81,10 +81,28 @@ pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
 }
 
 pub async fn send_acknowledgment_message() {
-    let twai_id = ExtendedId::new(0x1CE8FFEE).unwrap();
-    let twai_data = [0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xDE, 0x00];
-    let twai_frame = EspTwaiFrame::new(twai_id, &twai_data).unwrap();
+    // PGN: Acknowledgment (0xE800 = 59392)
+    // Source Address: 0xEE
 
+    let id = IdBuilder::from_pgn(PGN::AcknowledgmentMessage)
+        .priority(7)
+        .da(0xFF)
+        .sa(0xEE)
+        .build();
+
+    let msg = AcknowledgmentMessage {
+        control_byte: Some(AcknowledgmentType::Positive),
+        group_function_value: 0xFF,
+        pgn: PGN::from(0x00DE00),
+    };
+
+    let frame = j1939::FrameBuilder::new(id)
+        .copy_from_slice(&msg.to_pdu())
+        .build();
+
+    let twai_id = ExtendedId::new(id.as_raw()).unwrap();
+    let twai_data = frame.pdu();
+    let twai_frame = EspTwaiFrame::new(twai_id, &twai_data).unwrap();
     can_send_frame(twai_frame).await;
     info!("AcknowledgmentMessage sent");
 }

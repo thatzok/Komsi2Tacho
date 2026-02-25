@@ -165,7 +165,14 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
 
     // Send welcome message
     let _ = usb
-        .write_all(b"\r\n--- KOMSI Interface Ready ---\r\n")
+        .write_all(
+            concat!(
+                "\r\n--- Komsi2Tacho Version (v",
+                env!("CARGO_PKG_VERSION"),
+                ") ---\r\n--- KOMSI Interface Ready ---\r\n"
+            )
+            .as_bytes(),
+        )
         .await;
 
     let mut buffer = [0u8; 64];

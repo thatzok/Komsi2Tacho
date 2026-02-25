@@ -83,7 +83,10 @@ async fn main(spawner: Spawner) -> ! {
     spawner.spawn(tachograph_task()).unwrap(); // sends speed data to Tacho 
     spawner.spawn(date_time_task()).unwrap(); // sends datetime info to Tacho
 
-    info!("Komsi2Tacho: TWAI/CAN initialized (250k).");
+    info!(
+        "Komsi2Tacho Version {}: TWAI/CAN initialized (250k).",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // we do nothing in main loop, all work is done by tasks
     loop {
