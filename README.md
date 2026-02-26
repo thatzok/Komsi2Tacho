@@ -1,64 +1,56 @@
 # Komsi2Tacho
 
-Dieses Projekt ermöglicht die Ansteuerung eines physischen **VDO MTCO 1323** (Tacho / Geschwindigkeitsanzeige) (bekannt
-aus Linienbussen) direkt aus einer Simulation heraus.
+[Deutsche Version](README.de.md)
 
-Die Kommunikation basiert auf dem [KOMSI-Protokoll](https://github.com/thatzok/Komsi-Protocol) via USB/Serial und der Ausgabe der Daten über den **CAN-Bus**.
+This project allows controlling a physical **VDO MTCO 1323** (speedometer / display unit) (known from public buses) directly from a simulation.
 
-Gegenüber dem VDO TCO 1323 (Tacho-Anzeige, "Speedometer") tun wir auf dem CAN-BUS so, als wären wir ein VDO MTCO 1324 (Fahrtenschreiber, "Tachograph").
+Communication is based on the [KOMSI protocol](https://github.com/thatzok/Komsi-Protocol) via USB/Serial and outputting the data via the **CAN bus**.
 
-## Projektbeschreibung
+To the VDO TCO 1323 (speedometer display), we act on the CAN bus as if we were a VDO MTCO 1324 (tachograph).
 
-`Komsi2Tacho` fungiert als Übersetzer zwischen Simulations-Software am PC und realer Hardware. Es liest
-Telemetriedaten (insbesondere Geschwindigkeit) ein, transformiert diese in die entsprechenden CAN-Frames, die vom
-MTCO-Tachographen verarbeitet werden können und kümmert sich darum die CAN-Daten regelmäßig in den notwendigen
-Zeitintervallen zu senden.
+## Project Description
+
+`Komsi2Tacho` acts as a translator between simulation software on the PC and real hardware. It reads telemetry data (especially speed), transforms it into the corresponding CAN frames that can be processed by the MTCO tachograph, and takes care of sending the CAN data regularly at the required time intervals.
 
 ## Features
 
-- Direkte Umsetzung von KOMSI-Daten in CAN-Bus Nachrichten.
-- Optimiert für geringe Latenz zwischen Simulation und Zeigerausschlag.
-- Speziell angepasst an die spezifischen CAN-Parameter des VDO MTCO 1323.
+- Direct translation of KOMSI data into CAN bus messages.
+- Optimized for low latency between simulation and needle movement.
+- Specifically adapted to the specific CAN parameters of the VDO MTCO 1323.
 
-## Voraussetzungen
+## Prerequisites
 
-- Ein Mikrocontroller ESP32C6 und ein CAN-BUS-Transceiver.
-- Da der MTCO 1323 mit 24V betrieben wird, ist ein 24V-Netzteil notwendig
-- Eine Simulation oder ein Plugin, welches das KOMSI-Protokoll über die serielle Schnittstelle ausgibt (
-  z.B. **TheBus2Komsi** oder **Omsi2Komsi**). Zum Testen kann man sich aber auch mit einem Terminalprogramm mit
-  dem USB-Anschluss verbinden und manuell Befehle einzugeben.
+- An ESP32C6 microcontroller and a CAN bus transceiver.
+- Since the MTCO 1323 operates at 24V, a 24V power supply is required.
+- A simulation or plugin that outputs the KOMSI protocol via the serial interface (e.g., **TheBus2Komsi** or **Omsi2Komsi**). For testing, you can also connect to the USB port using a terminal program and enter commands manually.
 
-## Installation / Flashen
+## Installation / Flashing
 
-1. Installiere die Rust-Entwicklungsumgebung "cargo"
-2. Installiere den Rust Toolchain für den **ESP32C6** (klingt leichter als es ist, Sorry)
-3. Klone das Repository in deinen Workspace.
-4. Verbinde einen oder beide USB-Anschlüsse (siehe PINOUT.md) des **ESP32C6** mit dem PC
-5. `cargo run` - Flashe die Firmware auf deinen Controller und starte sie
-6. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm).
+1. Install the Rust development environment "cargo".
+2. Install the Rust toolchain for the **ESP32C6** (sounds easier than it is, sorry).
+3. Clone the repository into your workspace.
+4. Connect one or both USB ports (see PINOUT.md) of the **ESP32C6** to the PC.
+5. `cargo run` - Flash the firmware to your controller and start it.
+6. Connect the CAN bus to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms).
 
-## Falls Flashen nicht startet: Bootloader/Download‑Mode
+## If Flashing Doesn't Start: Bootloader/Download Mode
 
-Manche Boards gehen automatisch in den Flash‑Mode, manche nicht. Dann:
+Some boards go into flash mode automatically, some don't. In that case:
 
-BOOT gedrückt halten
-EN/RESET kurz drücken
-BOOT loslassen
-Danach nochmal flashen.
+1. Hold down BOOT.
+2. Briefly press EN/RESET.
+3. Release BOOT.
+4. Then try flashing again.
 
-## Nutzung
+## Usage
 
-1. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
-2. Verbinde einen oder beide USB-Anschlüsse (siehe PINOUT.md) des **ESP32C6** mit dem PC
+1. Connect the CAN bus to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms total).
+2. Connect one or both USB ports (see PINOUT.md) of the **ESP32C6** to the PC.
 
 ## Disclaimer
 
-Dieses Projekt dient ausschließlich Simulationszwecken im privaten Bereich. Eine Verwendung im realen Straßenverkehr zur
-Manipulation von Kontrollgeräten ist strikt untersagt.
+This project is for simulation purposes in the private sector only. Use in real road traffic for manipulating control devices is strictly prohibited.
 
-Dieses Projekt ist ohne irgendwelche Gewährleistung oder Garantie. Du benutzt es komplett auf eigene Gefahr.
-Ich bin nicht dafür verantwortlich, falls Du einen Kurzschluss machst oder PC, ESP, Netzteil, Tacho oder sonstwas
-damit kaputt machst.
+This project comes without any warranty or guarantee. You use it entirely at your own risk. I am not responsible if you cause a short circuit or damage your PC, ESP, power supply, speedometer, or anything else.
 
 Have Fun!
-
