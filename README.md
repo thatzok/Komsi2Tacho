@@ -3,9 +3,9 @@
 Dieses Projekt ermöglicht die Ansteuerung eines physischen **VDO MTCO 1323** (Tacho / Geschwindigkeitsanzeige) (bekannt
 aus Linienbussen) direkt aus einer Simulation heraus.
 
-Die Kommunikation basiert auf dem **KOMSI-Protokoll** via USB/Serial und der Ausgabe der Daten über den **CAN-Bus**.
+Die Kommunikation basiert auf dem [KOMSI-Protkoll](https://github.com/thatzok/Komsi-Protocol) via USB/Serial und der Ausgabe der Daten über den **CAN-Bus**.
 
-Gegenüber dem VDO TCO 1323 (Tacho) tun wir auf dem CAN-BUS so, als wären wir ein VDO MTCO 1324 (Fahrtenschreiber).
+Gegenüber dem VDO TCO 1323 (Tacho-Anzeige, "Speedometer") tun wir auf dem CAN-BUS so, als wären wir ein VDO MTCO 1324 (Fahrtenschreiber, "Tachograph").
 
 ## Projektbeschreibung
 
