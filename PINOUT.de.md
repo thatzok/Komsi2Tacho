@@ -1,5 +1,7 @@
 # Pinbelegung & Hardware-Setup
 
+### [English version](PINOUT.en.md)
+
 Diese Übersicht beschreibt die physische Verbindung für das **Komsi2Tacho** Projekt.
 
 ## 1. ESP32-C6 zu CAN-Transceiver (SN65HVD230)
@@ -35,10 +37,14 @@ A1/A2/A3 werden mit 24V der Stromversorgung verbunden und A6 mit Masse/Minus der
 Das `nanoESP32‑C6 V1.0 Entwicklungsboard` besitzt zwei USB-Anschlüsse, von denen einer für Flashen, Status-Infos und
 Debugging und der andere für die KOMSI-Kommunikation mit dem PC verwendet wird.
 
-| USB    | Beschriftung auf Board | Funktion                                       | Notiz                                                             |
-|:-------|:-----------------------|:-----------------------------------------------|:------------------------------------------------------------------|
-| Native | `ESP32C6`              | In ESP32C6 integriert, JTAG-Debugging, Flashen | Nur zum Flashen und Debuggen anschliessen, sonst nicht notwendig. |
-| CH343  | `CH343`                | USB-to-Serial Anschluss (UART)                 | KOMSI-Befehle vom PC                                              |
+| USB    | Beschriftung auf Board | Funktion                                       | Notiz                                       |
+|:-------|:-----------------------|:-----------------------------------------------|:--------------------------------------------|
+| Native | `ESP32C6`              | In ESP32C6 integriert, JTAG-Debugging, Flashen | Nur zum Flashen und Debuggen, KOMSI-Befehle |
+| CH343  | `CH343`                | USB-to-Serial Anschluss (UART)                 | KOMSI-Befehle vom PC                        |
+
+Wenn nach dem Flashen nur ein USB-Anschluss angeschlossen wird, kann der Native-Anschluss für die KOMSI-Kommunikation verwendet werden.
+Im Zweifelsfall ausprobieren. Wenn man ein Terminalprogramm mit dem USB-Verbindet, sollte auf dem KOMSI-Port eine Komsi-Nachricht ausgegeben werden.
+
 
 ## Wichtige Hinweise
 
@@ -52,6 +58,6 @@ Debugging und der andere für die KOMSI-Kommunikation mit dem PC verwendet wird.
 - **ESP32-Typ:** Es gibt vom ESP32 viele verschiedene Varianten. Dieses Projekt verwendet den `ESP32-C6` und müsste für
   andere Varianten teils erheblich angepasste werden.
 - Aktuell genutztes Board: `nanoESP32‑C6 V1.0 Entwicklungsboard`
-- Aktuell genutzter CAN-Bus-Transceiver: `SN65HVD230`. Es ist wichtig, dass es ein VD230-Typ ist, andere kommen mit der
+- Aktuell genutzter CAN-Bus-Transceiver: `SN65HVD230`. Es ist wichtig, dass es der VP230-Typ ist, andere kommen mit der
   3,3 Volt Versorgungsspannung des ESP32 evtl. nicht zuverlässig genug auf die notwendigen Spannungen des CAN-BUS.
  

@@ -27,9 +27,10 @@ Zeitintervallen zu senden.
 
 ## Voraussetzungen
 
-- Ein Mikrocontroller ESP32C6 und ein CAN-BUS-Transceiver.
+- Ein Mikrocontroller (**ESP32C6**) und ein CAN-BUS-Transceiver (**VP230**).
+- Ein VDO **MTCO 1323** mit CAN-BUS (die ganz alten mit eingebautem Fahrtenschreiber haben keinen CAN-BUS)
 - Da der MTCO 1323 mit 24V betrieben wird, ist ein 24V-Netzteil notwendig
-- Eine Simulation oder ein Plugin, welches das KOMSI-Protokoll über die serielle Schnittstelle ausgibt (
+- Eine Simulation oder ein Plugin, welches das [KOMSI-Protokoll](https://github.com/thatzok/Komsi-Protocol) über die serielle Schnittstelle ausgibt (
   z.B. **TheBus2Komsi** oder **Omsi2Komsi**). Zum Testen kann man sich aber auch mit einem Terminalprogramm mit
   dem USB-Anschluss verbinden und manuell Befehle einzugeben.
 
@@ -38,7 +39,7 @@ Zeitintervallen zu senden.
 1. Installiere die Rust-Entwicklungsumgebung "cargo"
 2. Installiere den Rust Toolchain für den **ESP32C6** (klingt leichter als es ist, Sorry)
 3. Klone das Repository in deinen Workspace.
-4. Verbinde einen oder beide USB-Anschlüsse (siehe PINOUT.md) des **ESP32C6** mit dem PC
+4. Verbinde einen oder beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
 5. `cargo run` - Flashe die Firmware auf deinen Controller und starte sie
 6. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm).
 
@@ -54,7 +55,7 @@ Danach nochmal flashen.
 ## Nutzung
 
 1. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
-2. Verbinde einen oder beide USB-Anschlüsse (siehe PINOUT.md) des **ESP32C6** mit dem PC
+2. Verbinde einen oder beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
 
 ## Disclaimer
 

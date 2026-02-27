@@ -26,16 +26,17 @@ To the VDO TCO 1323 (speedometer display), we act on the CAN bus as if we were a
 
 ## Prerequisites
 
-- An ESP32C6 microcontroller and a CAN bus transceiver.
+- A microcontroller (**ESP32-C6**) and a CAN bus transceiver (**VP230**).
+- A VDO **MTCO 1323** with CAN bus (the very old models with integrated tachographs do not have a CAN bus).
 - Since the MTCO 1323 operates at 24V, a 24V power supply is required.
-- A simulation or plugin that outputs the KOMSI protocol via the serial interface (e.g., **TheBus2Komsi** or **Omsi2Komsi**). For testing, you can also connect to the USB port using a terminal program and enter commands manually.
+- A simulation or plugin that outputs the [KOMSI protocol](https://github.com/thatzok/Komsi-Protocol) via the serial interface (e.g., **TheBus2Komsi** or **Omsi2Komsi**). For testing, you can also connect to the USB port using a terminal program and enter commands manually.
 
 ## Installation / Flashing
 
 1. Install the Rust development environment "cargo".
 2. Install the Rust toolchain for the **ESP32C6** (sounds easier than it is, sorry).
 3. Clone the repository into your workspace.
-4. Connect one or both USB ports (see PINOUT.md) of the **ESP32C6** to the PC.
+4. Connect one or both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the **ESP32C6** to the PC.
 5. `cargo run` - Flash the firmware to your controller and start it.
 6. Connect the CAN bus to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms).
 
@@ -51,7 +52,7 @@ Some boards go into flash mode automatically, some don't. In that case:
 ## Usage
 
 1. Connect the CAN bus to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms total).
-2. Connect one or both USB ports (see PINOUT.md) of the **ESP32C6** to the PC.
+2. Connect one or both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the **ESP32C6** to the PC.
 
 ## Disclaimer
 
