@@ -1,11 +1,14 @@
 # Komsi2Tacho
 
-[English version](README.md)
+### [English version](README.md)
 
-Dieses Projekt ermöglicht die Ansteuerung eines physischen **VDO MTCO 1323** (Tacho / Geschwindigkeitsanzeige) (bekannt
-aus Linienbussen) direkt aus einer Simulation heraus.
+## Dieses Projekt ermöglicht die Ansteuerung eines physischen **VDO MTCO 1323** (Tacho / Geschwindigkeitsanzeige) (bekannt aus Linienbussen) direkt aus einer Simulation heraus.
 
-Die Kommunikation basiert auf dem [KOMSI-Protokoll](https://github.com/thatzok/Komsi-Protocol) via USB/Serial und der Ausgabe der Daten über den **CAN-Bus**.
+<p align="center">
+  <img src="assets/vdo-mtco-1323.png" alt="Speedometer VDO MTCO 1323" width="50%">
+</p>
+
+**Die Kommunikation basiert auf dem [KOMSI-Protokoll](https://github.com/thatzok/Komsi-Protocol) via USB/Serial und der Ausgabe der Daten über den CAN-Bus**.
 
 Gegenüber dem VDO TCO 1323 (Tacho-Anzeige, "Speedometer") tun wir auf dem CAN-BUS so, als wären wir ein VDO MTCO 1324 (Fahrtenschreiber, "Tachograph").
 
@@ -62,5 +65,5 @@ Dieses Projekt ist ohne irgendwelche Gewährleistung oder Garantie. Du benutzt e
 Ich bin nicht dafür verantwortlich, falls Du einen Kurzschluss machst oder PC, ESP, Netzteil, Tacho oder sonstwas
 damit kaputt machst.
 
-Have Fun!
+**Have Fun!**
 
