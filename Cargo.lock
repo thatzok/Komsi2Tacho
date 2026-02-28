@@ -925,8 +925,9 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "j1939"
-version = "0.2.2"
-source = "git+https://github.com/thatzok/J1939#42d9cbdd1baf4311094595a2490652817c3669e9"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15a7a976cd043622d1e81fda16444dffc5d84ee505eff9d8d97e798385740f46"
 dependencies = [
  "chrono",
 ]
@@ -957,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "komsi2tacho"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "defmt 1.0.1",
  "embassy-executor",

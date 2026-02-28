@@ -2,7 +2,7 @@
 name = "komsi2tacho"
 edition = "2024"
 rust-version = "1.88"
-version = "0.2.0"
+version = "1.0.0"
 authors = ["ThatZok <af@komplix.de>"]
 license = "GPL-3.0-or-later"
 
@@ -20,7 +20,8 @@ panic = "deny"        # panics() in production are bad
 similar_names = "allow"
 
 [dependencies]
-j1939 = { git = "https://github.com/thatzok/J1939" }
+# j1939 = { git = "https://github.com/thatzok/J1939" }
+j1939 = "0.3"
 portable-atomic = { version = "1.0", features = ["critical-section"] }
 
 esp-hal = { version = "~1.0", features = ["defmt", "esp32c6", "unstable"] }
