@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # Ermöglicht das Erstellen von Releases ohne expliziten Token-Eintrag
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: riscv32imac-unknown-none-elf
+          components: rust-src
+
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Release Binary
+        run: cargo build --release
+
+      - name: Convert ELF to Flashable Binary
+        run: |
+          # Erstellt das Image für den ESP32-C6
+          espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
+
+      - name: Zip Artifact
+        run: zip komsi2tacho.zip komsi2tacho_esp32c6.bin
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: komsi2tacho.zip
+
