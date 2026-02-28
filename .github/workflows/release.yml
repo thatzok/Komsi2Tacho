@@ -45,7 +45,9 @@ jobs:
 
       - name: Convert ELF to Flashable Binary
         run: |
-          espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
+          # --merge erzeugt ein komplettes Image (Bin), das bei 0x0 geflasht wird
+          espflash save-image --chip esp32c6 --merge target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
+
 
       - name: Zip Artifact
         run: |
