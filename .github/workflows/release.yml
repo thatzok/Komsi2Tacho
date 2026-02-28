@@ -24,11 +24,15 @@ jobs:
           targets: riscv32imac-unknown-none-elf
           components: rust-src
 
-      - name: Install espflash via binstall
+      - name: Install espflash binary
         run: |
-          # Installiert binstall, falls nicht vorhanden, und dann espflash als Binary
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com | sh
-          cargo binstall espflash --confirm
+          # Nutzt das GitHub CLI (gh), um das passende Binary direkt zu laden
+          gh release download -R esp-rs/espflash -p "espflash-x86_64-unknown-linux-gnu.zip"
+          unzip espflash-x86_64-unknown-linux-gnu.zip
+          chmod +x espflash
+          mv espflash /usr/local/bin/
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -38,8 +42,7 @@ jobs:
 
       - name: Convert ELF to Flashable Binary
         run: |
-          # Wir nutzen hier den Pfad aus deiner Cargo.toml name = "komsi2tacho"
-          cargo espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
+          espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
 
       - name: Zip Artifact
         run: zip komsi2tacho.zip komsi2tacho_esp32c6.bin
@@ -48,3 +51,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: komsi2tacho.zip
+
