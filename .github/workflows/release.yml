@@ -33,16 +33,16 @@ jobs:
         env:
           RUSTC_BOOTSTRAP: 1
 
-      - name: Prepare Artifacts
+      - name: Prepare Artifact
         run: |
+          # Wir nutzen die ELF-Datei, da espflash damit Bootloader/Partitionstabelle selbst baut
           cp target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.elf
-          
-          # Erstelle das ZIP mit der ELF-Datei
           zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_esp32c6.elf
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: komsi2tacho_${{ github.ref_name }}.zip
+
 
 

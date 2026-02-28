@@ -41,9 +41,8 @@ Zeitintervallen zu senden.
 3. Entpacke den Inhalt der ZIP-Datei in einen Ordner deiner Wahl.
 4. Installiere das Offizielle-Tool "**espflash**", falls noch nicht installiert
 5. Verbinde beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
-6. flashe die .bin-datei mit: `espflash flash komsi2tacho_esp32c6.bin` 
-7. falls das flashen probleme macht, erzwinge das board mit:  `espflash flash --chip esp32c6 komsi2tacho_esp32c6.bin`
-8. Verbinde den esp32c6 mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
+6. flashe die .bin-datei mit: `espflash flash komsi2tacho_esp32c6.elf` 
+7. Verbinde den esp32c6 mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
 
 ## Falls Flashen nicht startet: Bootloader/Download‑Mode
 
