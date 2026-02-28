@@ -11,7 +11,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   DEFMT_LOG: "off"
-  # Erzwingt die Nutzung der installierten Toolchain und ignoriert lokale Overrides
   RUSTUP_TOOLCHAIN: stable
 
 jobs:
@@ -38,12 +37,17 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Build Release Binary
+      - name: Extract Version
+        id: get_version
         run: |
-          # Wir nutzen --target explizit, um lokale Config-Konflikte zu vermeiden
-          cargo build --release --target riscv32imac-unknown-none-elf -Z build-std=core,alloc
+          # Extrahiert die Version aus der Cargo.toml
+          VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Release Binary
+        run: cargo build --release --target riscv32imac-unknown-none-elf -Z build-std=core,alloc
         env:
-          # Stellt sicher, dass build-std auch auf Stable funktioniert
           RUSTC_BOOTSTRAP: 1
 
       - name: Convert ELF to Flashable Binary
@@ -51,10 +55,12 @@ jobs:
           espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
 
       - name: Zip Artifact
-        run: zip komsi2tacho.zip komsi2tacho_esp32c6.bin
+        run: |
+          # Erstellt das Zip mit der Versionsnummer im Namen
+          zip komsi2tacho_v${{ env.VERSION }}.zip komsi2tacho_esp32c6.bin
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: komsi2tacho.zip
-
+          # Findet automatisch die Datei mit der Versionsnummer
+          files: komsi2tacho_v${{ env.VERSION }}.zip
