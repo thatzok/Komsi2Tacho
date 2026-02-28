@@ -2,7 +2,7 @@
 name = "komsi2tacho"
 edition = "2024"
 rust-version = "1.88"
-version = "1.0.0"
+version = "1.1.8"
 authors = ["ThatZok <af@komplix.de>"]
 license = "GPL-3.0-or-later"
 

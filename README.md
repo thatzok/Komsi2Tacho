@@ -31,14 +31,16 @@ To the VDO TCO 1323 (speedometer display), we act on the CAN bus as if we were a
 - Since the MTCO 1323 operates at 24V, a 24V power supply is required.
 - A simulation or plugin that outputs the [KOMSI protocol](https://github.com/thatzok/Komsi-Protocol) via the serial interface (e.g., **TheBus2Komsi** or **Omsi2Komsi**). For testing, you can also connect to the USB port using a terminal program and enter commands manually.
 
-## Installation / Flashing
+## Download & Installation
 
-1. Install the Rust development environment "cargo".
-2. Install the Rust toolchain for the **ESP32C6** (sounds easier than it is, sorry).
-3. Clone the repository into your workspace.
-4. Connect one or both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the **ESP32C6** to the PC.
-5. `cargo run` - Flash the firmware to your controller and start it.
-6. Connect the CAN bus to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms).
+1. Go to the latest releases page [Releases](https://github.com/thatzok/Komsi2Tacho/releases).
+2. Download the file `komsi2tacho_vx.x.x.zip`.
+3. Extract the contents of the ZIP file into a folder of your choice.
+4. Install the official tool "**espflash**" if it is not already installed.
+5. Connect both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the ESP32-C6 to your PC.
+6. Flash the .bin file using: `espflash flash komsi2tacho_esp32c6.bin`
+7. If you encounter any issues during flashing, force the board type with: `espflash flash --chip esp32c6 komsi2tacho_esp32c6.bin`
+8. Connect the esp32 to the tachometer (CAN-High / CAN-Low) and ensure correct total termination (60 ohms total).
 
 ## If Flashing Doesn't Start: Bootloader/Download Mode
 
@@ -51,7 +53,7 @@ Some boards go into flash mode automatically, some don't. In that case:
 
 ## Usage
 
-1. Connect the CAN bus to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms total).
+1. Connect the esp32 to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms total).
 2. Connect one or both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the **ESP32C6** to the PC.
 
 ## Disclaimer

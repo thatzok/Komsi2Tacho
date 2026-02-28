@@ -34,14 +34,16 @@ Zeitintervallen zu senden.
   z.B. **TheBus2Komsi** oder **Omsi2Komsi**). Zum Testen kann man sich aber auch mit einem Terminalprogramm mit
   dem USB-Anschluss verbinden und manuell Befehle einzugeben.
 
-## Installation / Flashen
+## Download & Installation
 
-1. Installiere die Rust-Entwicklungsumgebung "cargo"
-2. Installiere den Rust Toolchain für den **ESP32C6** (klingt leichter als es ist, Sorry)
-3. Klone das Repository in deinen Workspace.
-4. Verbinde einen oder beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
-5. `cargo run` - Flashe die Firmware auf deinen Controller und starte sie
-6. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm).
+1. Gehe zur Seite des [neuesten Releases](https://github.com/thatzok/Komsi2Tacho/releases).
+2. Lade die Datei `komsi2tacho_vx.x.x.zip` herunter.
+3. Entpacke den Inhalt der ZIP-Datei in einen Ordner deiner Wahl.
+4. Installiere das Offizielle-Tool "**espflash**", falls noch nicht installiert
+5. Verbinde beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
+6. flashe die .bin-datei mit: `espflash flash komsi2tacho_esp32c6.bin` 
+7. falls das flashen probleme macht, erzwinge das board mit:  `espflash flash --chip esp32c6 komsi2tacho_esp32c6.bin`
+8. Verbinde den esp32c6 mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
 
 ## Falls Flashen nicht startet: Bootloader/Download‑Mode
 
@@ -54,7 +56,7 @@ Danach nochmal flashen.
 
 ## Nutzung
 
-1. Verbinde den CAN-Bus mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
+1. Verbinde den esp32c6 mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
 2. Verbinde einen oder beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
 
 ## Disclaimer
