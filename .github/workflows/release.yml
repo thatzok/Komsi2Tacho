@@ -6,10 +6,13 @@ on:
       - 'v*'
 
 permissions:
-  contents: write # Ermöglicht das Erstellen von Releases ohne expliziten Token-Eintrag
+  contents: write
 
 env:
   CARGO_TERM_COLOR: always
+  DEFMT_LOG: "off"
+  # Verhindert den "target triple" Fehler bei der Kommunikation mit Crates.io
+  CARGO_HTTP_MULTIPLEXING: "false"
 
 jobs:
   build-release:
@@ -23,19 +26,25 @@ jobs:
           targets: riscv32imac-unknown-none-elf
           components: rust-src
 
-      - name: Install espflash
-        run: cargo install espflash --locked
+      - name: Install espflash (Binary)
+        # Besser als 'cargo install', da viel schneller und weniger fehleranfällig
+        run: |
+          curl -L https://github.com -o espflash.zip
+          unzip espflash.zip
+          chmod +x espflash
+          sudo mv espflash /usr/local/bin/
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+        with:
+          # Verhindert, dass alte Cache-Artefakte den Build stören
+          shared-key: "release-build"
 
       - name: Build Release Binary
         run: cargo build --release
 
       - name: Convert ELF to Flashable Binary
-        run: |
-          # Erstellt das Image für den ESP32-C6
-          espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
+        run: espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
 
       - name: Zip Artifact
         run: zip komsi2tacho.zip komsi2tacho_esp32c6.bin
