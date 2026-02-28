@@ -25,15 +25,6 @@ jobs:
           targets: riscv32imac-unknown-none-elf
           components: rust-src
 
-      - name: Install espflash binary
-        run: |
-          gh release download -R esp-rs/espflash -p "espflash-x86_64-unknown-linux-gnu.zip"
-          unzip espflash-x86_64-unknown-linux-gnu.zip
-          chmod +x espflash
-          sudo mv espflash /usr/local/bin/
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
@@ -42,20 +33,16 @@ jobs:
         env:
           RUSTC_BOOTSTRAP: 1
 
-      - name: Create Binaries
+      - name: Prepare Artifacts
         run: |
-          # 1. Die kleine Datei (nur App-Image, ca. 73KB - 150KB)
-          espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_app_only.bin
+          cp target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.elf
           
-          # 2. Die große Datei (Full-Flash-Image mit Bootloader, 4MB)
-          espflash save-image --chip esp32c6 --merge target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_full_4mb.bin
-
-      - name: Zip Artifact
-        run: |
-          zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_app_only.bin komsi2tacho_full_4mb.bin
+          # Erstelle das ZIP mit der ELF-Datei
+          zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_esp32c6.elf
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: komsi2tacho_${{ github.ref_name }}.zip
+
 
