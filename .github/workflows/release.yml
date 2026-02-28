@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags:
-      # Trigger bei jedem Tag, der mit "v" beginnt
       - 'v*'
 
 permissions:
@@ -43,19 +42,20 @@ jobs:
         env:
           RUSTC_BOOTSTRAP: 1
 
-      - name: Convert ELF to Flashable Binary
+      - name: Create Binaries
         run: |
-          # --merge erzeugt ein komplettes Image (Bin), das bei 0x0 geflasht wird
-          espflash save-image --chip esp32c6 --merge target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
-
+          # 1. Die kleine Datei (nur App-Image, ca. 73KB - 150KB)
+          espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_app_only.bin
+          
+          # 2. Die große Datei (Full-Flash-Image mit Bootloader, 4MB)
+          espflash save-image --chip esp32c6 --merge target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_full_4mb.bin
 
       - name: Zip Artifact
         run: |
-          # Nutzt github.ref_name (z.B. v1.0.0), um das Zip zu benennen
-          zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_esp32c6.bin
+          zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_app_only.bin komsi2tacho_full_4mb.bin
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          # Lädt die Datei mit dem Tag-Namen im Dateinamen hoch
           files: komsi2tacho_${{ github.ref_name }}.zip
+
