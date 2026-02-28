@@ -11,6 +11,8 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   DEFMT_LOG: "off"
+  # Erzwingt die Nutzung der installierten Toolchain und ignoriert lokale Overrides
+  RUSTUP_TOOLCHAIN: stable
 
 jobs:
   build-release:
@@ -26,11 +28,10 @@ jobs:
 
       - name: Install espflash binary
         run: |
-          # Nutzt das GitHub CLI (gh), um das passende Binary direkt zu laden
           gh release download -R esp-rs/espflash -p "espflash-x86_64-unknown-linux-gnu.zip"
           unzip espflash-x86_64-unknown-linux-gnu.zip
           chmod +x espflash
-          mv espflash /usr/local/bin/
+          sudo mv espflash /usr/local/bin/
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -38,7 +39,12 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build Release Binary
-        run: cargo build --release
+        run: |
+          # Wir nutzen --target explizit, um lokale Config-Konflikte zu vermeiden
+          cargo build --release --target riscv32imac-unknown-none-elf -Z build-std=core,alloc
+        env:
+          # Stellt sicher, dass build-std auch auf Stable funktioniert
+          RUSTC_BOOTSTRAP: 1
 
       - name: Convert ELF to Flashable Binary
         run: |
