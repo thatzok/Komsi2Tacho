@@ -11,8 +11,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   DEFMT_LOG: "off"
-  # Verhindert den "target triple" Fehler bei der Kommunikation mit Crates.io
-  CARGO_HTTP_MULTIPLEXING: "false"
 
 jobs:
   build-release:
@@ -26,25 +24,22 @@ jobs:
           targets: riscv32imac-unknown-none-elf
           components: rust-src
 
-      - name: Install espflash (Binary)
-        # Besser als 'cargo install', da viel schneller und weniger fehleranfällig
+      - name: Install espflash via binstall
         run: |
-          curl -L https://github.com -o espflash.zip
-          unzip espflash.zip
-          chmod +x espflash
-          sudo mv espflash /usr/local/bin/
+          # Installiert binstall, falls nicht vorhanden, und dann espflash als Binary
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com | sh
+          cargo binstall espflash --confirm
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-        with:
-          # Verhindert, dass alte Cache-Artefakte den Build stören
-          shared-key: "release-build"
 
       - name: Build Release Binary
         run: cargo build --release
 
       - name: Convert ELF to Flashable Binary
-        run: espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
+        run: |
+          # Wir nutzen hier den Pfad aus deiner Cargo.toml name = "komsi2tacho"
+          cargo espflash save-image --chip esp32c6 target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.bin
 
       - name: Zip Artifact
         run: zip komsi2tacho.zip komsi2tacho_esp32c6.bin
@@ -53,4 +48,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: komsi2tacho.zip
-
