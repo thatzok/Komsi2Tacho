@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags:
+      # Trigger bei jedem Tag, der mit "v" beginnt
       - 'v*'
 
 permissions:
@@ -37,14 +38,6 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Extract Version
-        id: get_version
-        run: |
-          # Extrahiert die Version aus der Cargo.toml
-          VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Build Release Binary
         run: cargo build --release --target riscv32imac-unknown-none-elf -Z build-std=core,alloc
         env:
@@ -56,11 +49,11 @@ jobs:
 
       - name: Zip Artifact
         run: |
-          # Erstellt das Zip mit der Versionsnummer im Namen
-          zip komsi2tacho_v${{ env.VERSION }}.zip komsi2tacho_esp32c6.bin
+          # Nutzt github.ref_name (z.B. v1.0.0), um das Zip zu benennen
+          zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_esp32c6.bin
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          # Findet automatisch die Datei mit der Versionsnummer
-          files: komsi2tacho_v${{ env.VERSION }}.zip
+          # Lädt die Datei mit dem Tag-Namen im Dateinamen hoch
+          files: komsi2tacho_${{ github.ref_name }}.zip
