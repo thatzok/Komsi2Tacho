@@ -967,7 +967,7 @@ dependencies = [
 
 [[package]]
 name = "komsi2tacho"
-version = "1.1.13"
+version = "1.2.0"
 dependencies = [
  "defmt 1.0.1",
  "embassy-executor",
