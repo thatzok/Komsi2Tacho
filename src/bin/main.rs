@@ -9,10 +9,11 @@ use esp_hal::gpio::Io;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, TwaiConfiguration, TwaiMode};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
+use komsi::KomsiDateTime;
 use komsi2tacho::can::{
     can_rx_task, can_tx_task, date_time_task, hr_distance_task, tachograph_task,
 };
-use komsi2tacho::komsi::{KomsiDateTime, komsi_task, usb_write};
+use komsi2tacho::commands::{komsi_task, usb_write};
 use komsi2tacho::time::sync_system_time;
 
 #[panic_handler]

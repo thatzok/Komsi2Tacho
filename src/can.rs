@@ -1,4 +1,4 @@
-use crate::komsi::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
+use crate::commands::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
 use crate::time::get_current_time_for_j1939;
 use core::fmt::Write as _;
 use defmt::{error, info};

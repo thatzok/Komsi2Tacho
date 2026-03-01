@@ -1,4 +1,4 @@
-use crate::komsi::KomsiDateTime;
+use komsi::KomsiDateTime;
 use embassy_time::Instant;
 
 // if we would use AtomicU32 instead of AtomicU64 we would not need "portable_atomic" crate,
