@@ -1,14 +1,14 @@
 use crate::commands::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
 use crate::time::get_current_time_for_j1939;
+use alloc::format;
 use core::fmt::Write as _;
-use defmt::{error, info};
+use defmt::{error, info, warn};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
 use embedded_can::{Frame, Id};
 use esp_hal::Async;
-use esp_hal::twai::{EspTwaiFrame, ExtendedId};
-use esp_hal::twai::{TwaiRx, TwaiTx};
+use esp_hal::twai::{EspTwaiFrame, ExtendedId, Twai};
 use heapless::String;
 
 use j1939::IdBuilder;
@@ -20,67 +20,78 @@ use j1939::spn::{DriverWorkingState, TachographMessage};
 // 16 frames is more than enough for our use case
 pub static CAN_TX_CHANNEL: Channel<CriticalSectionRawMutex, EspTwaiFrame, 16> = Channel::new();
 
+#[embassy_executor::task]
+pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
+    info!("CAN Manager Task started (Combined TX/RX)");
+
+    loop {
+        // Wir warten auf das Erste, was passiert:
+        // Entweder eine Nachricht zum Senden ODER eine empfangene Nachricht
+        match embassy_futures::select::select(CAN_TX_CHANNEL.receive(), twai.receive_async()).await
+        {
+            // FALL A: Wir sollen etwas senden
+            embassy_futures::select::Either::First(frame) => {
+                if let Err(e) = twai.transmit_async(&frame).await {
+                    error!("CAN TX Error: {:?}", e);
+
+                    // HIER hast du jetzt Zugriff auf alle Methoden!
+                    if format!("{:?}", e).contains("BusOff") {
+                        warn!("Bus-Off erkannt! Starte Recovery...");
+                        // twai.stop(); // Falls nötig
+                        // Timer::after_millis(50).await;
+                        // twai.start();
+                        // info!("Controller neu gestartet.");
+                    }
+                }
+            }
+
+            // FALL B: Wir haben etwas empfangen
+            embassy_futures::select::Either::Second(result) => {
+                match result {
+                    Ok(frame) => {
+                        let id = match frame.id() {
+                            Id::Standard(s) => s.as_raw() as u32,
+                            Id::Extended(e) => e.as_raw(),
+                        };
+
+                        // Extract J1939 PGN (Bits 8-25 of the 29-bit ID)
+                        // just for info message
+                        let pgn = (id >> 8) & 0x3FFFF;
+                        let j1939_id = j1939::Id::new(id);
+                        let source_address = id & 0xFF;
+                        info!(
+                            "RX ID: ID={:08X} PGN: {:05X} {:?} from {:02X}",
+                            id,
+                            pgn,
+                            defmt::Debug2Format(&j1939_id.pgn()),
+                            source_address
+                        );
+
+                        // Check for specific ID: 0x1CDEEE17
+                        // PGN 56832 Reset from Source Address 0x17
+                        if id == 0x1CDEEE17 {
+                            info!(
+                                "Specific RESET request (1CDEEE17) detected, sending response..."
+                            );
+                            send_acknowledgment_message().await;
+                        }
+                    }
+                    Err(e) => {
+                        error!("CAN RX hardware error: {:?}", e);
+                        let mut s: String<64> = String::new();
+                        let _ = write!(s, "ERR: CAN RX Error: {:?}", e);
+                        usb_write_dynamic(s);
+                        embassy_time::Timer::after_millis(100).await;
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Helper function to put a packet into the queue from anywhere
 pub async fn can_send_frame(frame: EspTwaiFrame) {
     CAN_TX_CHANNEL.send(frame).await;
-}
-
-/// Task for sending (processes the queue)
-#[embassy_executor::task]
-pub async fn can_tx_task(mut tx: TwaiTx<'static, Async>) {
-    info!("CAN TX Task started");
-    loop {
-        let frame = CAN_TX_CHANNEL.receive().await;
-        if let Err(e) = tx.transmit_async(&frame).await {
-            error!("CAN TX Error: {:?}", e);
-            let mut s: String<64> = String::new();
-            let _ = write!(s, "ERR: CAN TX Error: {:?}", e);
-            usb_write_dynamic(s);
-        }
-    }
-}
-
-/// Task for receiving (processes incoming messages)
-#[embassy_executor::task]
-pub async fn can_rx_task(mut rx: TwaiRx<'static, Async>) {
-    info!("CAN RX Task started");
-    loop {
-        match rx.receive_async().await {
-            Ok(frame) => {
-                let id = match frame.id() {
-                    Id::Standard(s) => s.as_raw() as u32,
-                    Id::Extended(e) => e.as_raw(),
-                };
-
-                // Extract J1939 PGN (Bits 8-25 of the 29-bit ID)
-                // just for info message
-                let pgn = (id >> 8) & 0x3FFFF;
-                let j1939_id = j1939::Id::new(id);
-                let source_address = id & 0xFF;
-                info!(
-                    "RX ID: ID={:08X} PGN: {:05X} {:?} from {:02X}",
-                    id,
-                    pgn,
-                    defmt::Debug2Format(&j1939_id.pgn()),
-                    source_address
-                );
-
-                // Check for specific ID: 0x1CDEEE17
-                // PGN 56832 Reset from Source Address 0x17
-                if id == 0x1CDEEE17 {
-                    info!("Specific RESET request (1CDEEE17) detected, sending response...");
-                    send_acknowledgment_message().await;
-                }
-            }
-            Err(e) => {
-                error!("CAN RX hardware error: {:?}", e);
-                let mut s: String<64> = String::new();
-                let _ = write!(s, "ERR: CAN RX Error: {:?}", e);
-                usb_write_dynamic(s);
-                embassy_time::Timer::after_millis(100).await;
-            }
-        }
-    }
 }
 
 pub async fn send_acknowledgment_message() {

@@ -10,9 +10,7 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, TwaiConfiguration, TwaiMode};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use komsi::KomsiDateTime;
-use komsi2tacho::can::{
-    can_rx_task, can_tx_task, date_time_task, hr_distance_task, tachograph_task,
-};
+use komsi2tacho::can::{can_manager_task, date_time_task, hr_distance_task, tachograph_task};
 use komsi2tacho::commands::{komsi_task, usb_write};
 use komsi2tacho::time::sync_system_time;
 
@@ -71,12 +69,8 @@ async fn main(spawner: Spawner) -> ! {
     let can_config_async = can_config.into_async();
     let twai = can_config_async.start();
 
-    // Split the driver into sender and receiver here
-    let (rx, tx) = twai.split();
-
     // Start tasks
-    spawner.spawn(can_tx_task(tx)).unwrap(); // CAN-sender
-    spawner.spawn(can_rx_task(rx)).unwrap(); // CAN-receiver
+    spawner.spawn(can_manager_task(twai)).unwrap();
     spawner.spawn(hr_distance_task()).unwrap(); // sends distance info to Tacho and updates values
     spawner.spawn(tachograph_task()).unwrap(); // sends speed data to Tacho 
     spawner.spawn(date_time_task()).unwrap(); // sends datetime info to Tacho
