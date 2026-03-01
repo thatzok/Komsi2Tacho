@@ -80,7 +80,11 @@ async fn main(spawner: Spawner) -> ! {
         env!("CARGO_PKG_VERSION")
     );
 
-    usb_write("Komsi2Tacho: CAN-Bus started (250 kbit/s).");
+    usb_write(concat!(
+        "Komsi2Tacho Version ",
+        env!("CARGO_PKG_VERSION"),
+        " started"
+    ));
 
     // we do nothing in main loop, all work is done by tasks
     loop {

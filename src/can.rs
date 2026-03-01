@@ -1,6 +1,4 @@
-use crate::commands::{
-    ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write, usb_write_dynamic,
-};
+use crate::commands::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
 use crate::time::get_current_time_for_j1939;
 use alloc::format;
 use core::fmt::Write as _;
@@ -37,18 +35,41 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
         match selected {
             // FALL: Senden
             embassy_futures::select::Either::First(frame) => {
-                if let Err(e) = twai.transmit_async(&frame).await {
-                    error!("CAN TX Error: {:?}", e);
+                match embassy_time::with_timeout(
+                    Duration::from_millis(100),
+                    twai.transmit_async(&frame),
+                )
+                .await
+                {
+                    Ok(Ok(_)) => {
+                        // Erfolgreich gesendet
+                    }
+                    Ok(Err(e)) => {
+                        error!("CAN TX Error: {:?}", e);
+                        let mut s: String<64> = String::new();
+                        let _ = write!(s, "CAN TX Error: {:?}", e);
+                        usb_write_dynamic(s);
 
-                    if format!("{:?}", e).contains("BusOff") {
-                        warn!("CAN-Bus-Off detected! Resetting...");
-                        usb_write("CAN-Bus-Off detected! Resetting...");
+                        if format!("{:?}", e).contains("BusOff") {
+                            warn!("CAN-Bus-Off detected! Resetting...");
 
-                        // JETZT ist twai hier verfügbar!
-                        // twai.stop();
-                        // Timer::after(Duration::from_millis(50)).await;
-                        // twai.start();
-                        // info!("Controller neu gestartet.");
+                            // JETZT ist twai hier verfügbar!
+                            let cfg = twai.stop();
+                            Timer::after(Duration::from_millis(1000)).await;
+                            twai = cfg.start();
+                            info!("Controller neu gestartet.");
+                        }
+                    }
+                    Err(e) => {
+                        warn!("CAN TX Timeout! Controller might be stuck, resetting...");
+                        let mut s: String<64> = String::new();
+                        let _ = write!(s, "CAN TX Error: {:?}", e);
+                        usb_write_dynamic(s);
+
+                        let cfg = twai.stop();
+                        Timer::after(Duration::from_millis(1000)).await;
+                        twai = cfg.start();
+                        info!("Controller nach Timeout neu gestartet.");
                     }
                 }
             }
