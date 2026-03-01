@@ -35,7 +35,7 @@ jobs:
 
       - name: Prepare Artifact
         run: |
-          # Wir nutzen die ELF-Datei, da espflash damit Bootloader/Partitionstabelle selbst baut
+          # we create only the ELF-file. espflash builds the boot loader and partition table
           cp target/riscv32imac-unknown-none-elf/release/komsi2tacho komsi2tacho_esp32c6.elf
           zip komsi2tacho_${{ github.ref_name }}.zip komsi2tacho_esp32c6.elf
 
