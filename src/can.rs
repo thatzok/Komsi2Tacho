@@ -1,4 +1,6 @@
-use crate::commands::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
+use crate::commands::{
+    ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write, usb_write_dynamic,
+};
 use crate::time::get_current_time_for_j1939;
 use alloc::format;
 use core::fmt::Write as _;
@@ -25,19 +27,19 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
     info!("CAN Manager Task started (Combined TX/RX)");
 
     loop {
-        // Wir warten auf das Erste, was passiert:
-        // Entweder eine Nachricht zum Senden ODER eine empfangene Nachricht
+        // we wait if if receive a send-frame from channel or a paket from can-bus
         match embassy_futures::select::select(CAN_TX_CHANNEL.receive(), twai.receive_async()).await
         {
-            // FALL A: Wir sollen etwas senden
+            // we should send
             embassy_futures::select::Either::First(frame) => {
                 if let Err(e) = twai.transmit_async(&frame).await {
                     error!("CAN TX Error: {:?}", e);
 
-                    // HIER hast du jetzt Zugriff auf alle Methoden!
                     if format!("{:?}", e).contains("BusOff") {
-                        warn!("Bus-Off erkannt! Starte Recovery...");
-                        // twai.stop(); // Falls nötig
+                        warn!("CAN-Bus-Off \"Bus off\" detected reset esp32 ...");
+                        usb_write("CAN-Bus-Off \"Bus off\" detected reset esp32 ...");
+                        // this does not work because of borrow-checker
+                        // twai.stop();
                         // Timer::after_millis(50).await;
                         // twai.start();
                         // info!("Controller neu gestartet.");
@@ -45,7 +47,7 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
                 }
             }
 
-            // FALL B: Wir haben etwas empfangen
+            // we should reveive
             embassy_futures::select::Either::Second(result) => {
                 match result {
                     Ok(frame) => {
