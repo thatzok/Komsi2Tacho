@@ -27,20 +27,26 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
     info!("CAN Manager Task started (Combined TX/RX)");
 
     loop {
-        // we wait if if receive a send-frame from channel or a paket from can-bus
-        match embassy_futures::select::select(CAN_TX_CHANNEL.receive(), twai.receive_async()).await
-        {
-            // we should send
+        // 1. Wir speichern das Ergebnis des Selects in einer Variable
+        let selected =
+            embassy_futures::select::select(CAN_TX_CHANNEL.receive(), twai.receive_async()).await;
+
+        // Sobald .await fertig ist, sind die Borrows von 'select' beendet.
+        // Jetzt können wir 'twai' wieder frei benutzen.
+
+        match selected {
+            // FALL: Senden
             embassy_futures::select::Either::First(frame) => {
                 if let Err(e) = twai.transmit_async(&frame).await {
                     error!("CAN TX Error: {:?}", e);
 
                     if format!("{:?}", e).contains("BusOff") {
-                        warn!("CAN-Bus-Off \"Bus off\" detected reset esp32 ...");
-                        usb_write("CAN-Bus-Off \"Bus off\" detected reset esp32 ...");
-                        // this does not work because of borrow-checker
+                        warn!("CAN-Bus-Off detected! Resetting...");
+                        usb_write("CAN-Bus-Off detected! Resetting...");
+
+                        // JETZT ist twai hier verfügbar!
                         // twai.stop();
-                        // Timer::after_millis(50).await;
+                        // Timer::after(Duration::from_millis(50)).await;
                         // twai.start();
                         // info!("Controller neu gestartet.");
                     }
