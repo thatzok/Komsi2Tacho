@@ -37,7 +37,7 @@ To the VDO TCO 1323 (speedometer display), we act on the CAN bus as if we were a
 2. Download the file `komsi2tacho_vx.x.x.zip`.
 3. Extract the contents of the ZIP file into a folder of your choice.
 4. Install the official tool "**espflash**" if it is not already installed.
-5. Connect both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the ESP32-C6 to your PC.
+5. Connect the "native" USB port (see [PINOUT.en.md](PINOUT.en.md)) of the ESP32-C6 to your PC.
 6. Flash the .elf file using: `espflash flash komsi2tacho_esp32c6.elf`
 7. Connect the esp32 to the tachometer (CAN-High / CAN-Low) and ensure correct total termination (60 ohms total).
 
@@ -53,7 +53,7 @@ Some boards go into flash mode automatically, some don't. In that case:
 ## Usage
 
 1. Connect the esp32 to the speedometer (CAN-High / CAN-Low) and ensure correct termination (60 ohms total).
-2. Connect one or both USB ports (see [PINOUT.en.md](PINOUT.en.md)) of the **ESP32C6** to the PC.
+2. Connect the "native" USB port (see [PINOUT.en.md](PINOUT.en.md)) of the **ESP32C6** to the PC.
 
 ## Disclaimer
 

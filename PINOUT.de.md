@@ -34,17 +34,15 @@ A1/A2/A3 werden mit 24V der Stromversorgung verbunden und A6 mit Masse/Minus der
 
 ## 3. USB-Anschluss ESP32-C6 zum PC
 
-Das `nanoESP32‑C6 V1.0 Entwicklungsboard` besitzt zwei USB-Anschlüsse, von denen einer für Flashen, Status-Infos und
-Debugging und der andere für die KOMSI-Kommunikation mit dem PC verwendet wird.
+Das `nanoESP32‑C6 V1.0 Entwicklungsboard` besitzt zwei USB-Anschlüsse, von denen nur einer genutzt wird.
 
-| USB    | Beschriftung auf Board | Funktion                                       | Notiz                                       |
-|:-------|:-----------------------|:-----------------------------------------------|:--------------------------------------------|
-| Native | `ESP32C6`              | In ESP32C6 integriert, JTAG-Debugging, Flashen | Nur zum Flashen und Debuggen, KOMSI-Befehle |
-| CH343  | `CH343`                | USB-to-Serial Anschluss (UART)                 | KOMSI-Befehle vom PC                        |
+| USB    | Beschriftung auf Board | Funktion                                       | Notiz                |
+|:-------|:-----------------------|:-----------------------------------------------|:---------------------|
+| Native | `ESP32C6`              | In ESP32C6 integriert, JTAG-Debugging, Flashen | Mit dem PC verbinden |
+| CH343  | `CH343`                | USB-to-Serial Anschluss (UART)                 | - unbenutzt -        |
 
-Wenn nach dem Flashen nur ein USB-Anschluss angeschlossen wird, kann der Native-Anschluss für die KOMSI-Kommunikation verwendet werden.
-Im Zweifelsfall ausprobieren. Wenn man ein Terminalprogramm mit dem USB-Verbindet, sollte auf dem KOMSI-Port eine Komsi-Nachricht ausgegeben werden.
-
+Wenn man zu Testzwecken ein Terminalprogramm mit dem USB-Verbindet, sollte auf dem KOMSI-Port eine Komsi-Nachricht
+ausgegeben werden und man kann manuell KOMSI-Befehle an den ESP32 senden.
 
 ## Wichtige Hinweise
 

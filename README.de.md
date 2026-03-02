@@ -40,7 +40,7 @@ Zeitintervallen zu senden.
 2. Lade die Datei `komsi2tacho_vx.x.x.zip` herunter.
 3. Entpacke den Inhalt der ZIP-Datei in einen Ordner deiner Wahl.
 4. Installiere das Offizielle-Tool "**espflash**", falls noch nicht installiert
-5. Verbinde beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
+5. Verbinde den "nativen" USB-Anschluss (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
 6. flashe die .elf Datei mit: `espflash flash komsi2tacho_esp32c6.elf` 
 7. Verbinde den esp32c6 mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
 
@@ -56,7 +56,7 @@ Danach nochmal flashen.
 ## Nutzung
 
 1. Verbinde den esp32c6 mit dem Tacho (CAN-High / CAN-Low) und achte auf die korrekte Terminierung (60 Ohm gesamt).
-2. Verbinde einen oder beide USB-Anschlüsse (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
+2. Verbinde den "nativen" USB-Anschluss (siehe [PINOUT.de.md](PINOUT.de.md)) des **ESP32C6** mit dem PC
 
 ## Disclaimer
 
