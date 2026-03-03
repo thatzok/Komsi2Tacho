@@ -5,7 +5,7 @@
 ## Dieses Projekt ermöglicht die Ansteuerung eines physischen **VDO MTCO 1323** (Tacho / Geschwindigkeitsanzeige) (bekannt aus Linienbussen) direkt aus einer Simulation heraus.
 
 <p align="center">
-  <img src="assets/vdo-mtco-1323.png" alt="Speedometer VDO MTCO 1323" width="50%">
+  <img src="assets/vdo-mtco-1323.0301.png" alt="Speedometer VDO MTCO 1323" width="50%">
 </p>
 
 **Die Kommunikation basiert auf dem [KOMSI-Protokoll](https://github.com/thatzok/Komsi-Protocol) via USB/Serial und der Ausgabe der Daten über den CAN-Bus**.
@@ -23,12 +23,12 @@ Zeitintervallen zu senden.
 
 - Direkte Umsetzung von KOMSI-Daten in CAN-Bus Nachrichten.
 - Optimiert für geringe Latenz zwischen Simulation und Zeigerausschlag.
-- Speziell angepasst an die spezifischen CAN-Parameter des VDO MTCO 1323.
+- Speziell angepasst an die spezifischen CAN-Parameter des VDO MTCO 1323.0301.
 
 ## Voraussetzungen
 
 - Ein Mikrocontroller (**ESP32C6**) und ein CAN-BUS-Transceiver (**VP230**).
-- Ein VDO **MTCO 1323** mit CAN-BUS (die ganz alten mit eingebautem Fahrtenschreiber haben keinen CAN-BUS)
+- Ein VDO **MTCO 1323.0301** mit CAN-BUS (die ganz alten mit eingebautem Fahrtenschreiber haben keinen CAN-BUS)
 - Da der MTCO 1323 mit 24V betrieben wird, ist ein 24V-Netzteil notwendig
 - Eine Simulation oder ein Plugin, welches das [KOMSI-Protokoll](https://github.com/thatzok/Komsi-Protocol) über die serielle Schnittstelle ausgibt (
   z.B. **TheBus2Komsi** oder **Omsi2Komsi**). Zum Testen kann man sich aber auch mit einem Terminalprogramm mit

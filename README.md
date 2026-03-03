@@ -6,7 +6,7 @@
 
 
 <p align="center">
-  <img src="assets/vdo-mtco-1323.png" alt="Speedometer VDO MTCO 1323" width="50%">
+  <img src="assets/vdo-mtco-1323.0301.png" alt="Speedometer VDO MTCO 1323" width="50%">
 </p>
 
 
@@ -22,12 +22,12 @@ To the VDO TCO 1323 (speedometer display), we act on the CAN bus as if we were a
 
 - Direct translation of KOMSI data into CAN bus messages.
 - Optimized for low latency between simulation and needle movement.
-- Specifically adapted to the specific CAN parameters of the VDO MTCO 1323.
+- Specifically adapted to the specific CAN parameters of the VDO MTCO 1323.0301.
 
 ## Prerequisites
 
 - A microcontroller (**ESP32-C6**) and a CAN bus transceiver (**VP230**).
-- A VDO **MTCO 1323** with CAN bus (the very old models with integrated tachographs do not have a CAN bus).
+- A VDO **MTCO 1323.0301** with CAN bus (the very old models with integrated tachographs do not have a CAN bus).
 - Since the MTCO 1323 operates at 24V, a 24V power supply is required.
 - A simulation or plugin that outputs the [KOMSI protocol](https://github.com/thatzok/Komsi-Protocol) via the serial interface (e.g., **TheBus2Komsi** or **Omsi2Komsi**). For testing, you can also connect to the USB port using a terminal program and enter commands manually.
 

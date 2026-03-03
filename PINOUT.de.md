@@ -2,7 +2,12 @@
 
 ### [English version](PINOUT.en.md)
 
-Diese Übersicht beschreibt die physische Verbindung für das **Komsi2Tacho** Projekt.
+## Diese Übersicht beschreibt die physische Verbindung für das **Komsi2Tacho** Projekt.
+
+
+<p align="left">
+  <img src="assets/wiring-diagram.png" alt="Speedometer VDO MTCO 1323.0301" width="80%">
+</p>
 
 ## 1. ESP32-C6 zu CAN-Transceiver (SN65HVD230)
 
@@ -13,7 +18,7 @@ Diese Übersicht beschreibt die physische Verbindung für das **Komsi2Tacho** Pr
 | **VCC** | `3V3`              | `3V3`           | 3.3V Versorgung       |
 | **GND** | `GND`              | `GND`           | Gemeinsame Masse      |
 
-## 2. Anschluss VDO MTCO 1323 (Tacho)
+## 2. Anschluss VDO MTCO 1323.0301 (Tacho)
 
 Der Tacho nutzt auf der Rückseite standardisierte ISO-Stecker (A, B, C, D), es wird nur der Stecker A verwendet.
 
