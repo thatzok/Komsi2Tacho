@@ -48,7 +48,7 @@ spin = "0.10.0"
 embassy-sync = "0.6.2"
 embassy-futures = "0.1.1"
 heapless = "0.8.0"
-komsi = { version = "1.5.1", default-features = false, features = ["defmt"] }    # no default-features because we are in no-std
+komsi = { version = "1.6", default-features = false, features = ["defmt"] }    # no default-features because we are in no-std
 
 
 [profile.dev]

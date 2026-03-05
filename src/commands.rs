@@ -155,6 +155,11 @@ fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
                     info!("OK: Odometer set");
                 }
 
+                KomsiCommand::InfoRequest(verbose) => {
+                    info!("OK: InfoRequest");
+                    show_info(verbose);
+                }
+
                 // We could add more commands here, if we want
                 // for now, just some input message as example
                 KomsiCommand::Ignition(on) => {
@@ -174,5 +179,16 @@ fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
         Err(e) => {
             info!("ERR: KOMSI command: {:?}", e);
         }
+    }
+}
+
+pub fn show_info(verbose: bool) {
+    usb_write(concat!("Komsi2Tacho Version ", env!("CARGO_PKG_VERSION"),));
+
+    if verbose {
+        usb_write("CAN-Bus:");
+        usb_write("  GPIO6: TX/CTX");
+        usb_write("  GPIO7: RX/CRX");
+        usb_write("  Speed: 250 kbit/s");
     }
 }

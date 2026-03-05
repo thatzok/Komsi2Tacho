@@ -958,9 +958,9 @@ dependencies = [
 
 [[package]]
 name = "komsi"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a1ea4d36085b89e9c1852cb8cc14fcb3ceaea4eb13646e9bc52e4691e07632"
+checksum = "60523c89c8878a3a68d015b99aaac33520111265419b674a3362b22b4ac6b85f"
 dependencies = [
  "defmt 1.0.1",
 ]
