@@ -1,8 +1,10 @@
 use crate::time::sync_system_time;
+use core::fmt::Write as _;
 use defmt::{error, info};
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
+// use embassy_time::Duration;
 use embedded_io_async::{Read, Write};
 use esp_hal::Async;
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
@@ -36,6 +38,30 @@ pub fn usb_write(msg: &'static str) {
 pub fn usb_write_dynamic(msg: String<64>) {
     let _ = USB_TX_CHANNEL.try_send(UsbMsg::Dynamic(msg));
 }
+
+#[derive(Debug, Clone)]
+pub enum CanStatus {
+    Ready,
+    ReceiveError(String<32>),
+    TransmitError(String<32>),
+    OtherError(String<32>),
+    BusOff,
+}
+
+impl defmt::Format for CanStatus {
+    fn format(&self, fmt: defmt::Formatter) {
+        match self {
+            CanStatus::Ready => defmt::write!(fmt, "Ready"),
+            CanStatus::ReceiveError(e) => defmt::write!(fmt, "ReceiveError({:?})", e.as_str()),
+            CanStatus::TransmitError(e) => defmt::write!(fmt, "TransmitError({:?})", e.as_str()),
+            CanStatus::OtherError(e) => defmt::write!(fmt, "OtherError({:?})", e.as_str()),
+            CanStatus::BusOff => defmt::write!(fmt, "BusOff"),
+        }
+    }
+}
+
+pub static CAN_STATUS: Mutex<CriticalSectionRawMutex, core::cell::RefCell<CanStatus>> =
+    Mutex::new(core::cell::RefCell::new(CanStatus::Ready));
 
 // "Global" Variables thread safe for vehicle state
 pub static ACTUAL_SPEED: Mutex<CriticalSectionRawMutex, core::cell::Cell<u32>> =
@@ -109,16 +135,23 @@ pub async fn komsi_task(mut usb: UsbSerialJtag<'static, Async>) {
                 }
             }
             Either::Second(msg) => {
-                match msg {
-                    UsbMsg::Static(s) => {
-                        let _ = usb.write_all(s.as_bytes()).await;
+                match embassy_time::with_timeout(embassy_time::Duration::from_millis(500), async {
+                    match msg {
+                        UsbMsg::Static(s) => {
+                            let _ = usb.write_all(s.as_bytes()).await;
+                        }
+                        UsbMsg::Dynamic(s) => {
+                            let _ = usb.write_all(s.as_bytes()).await;
+                        }
                     }
-                    UsbMsg::Dynamic(s) => {
-                        let _ = usb.write_all(s.as_bytes()).await;
-                    }
+                    let _ = usb.write_all(b"\r\n").await;
+                    let _ = usb.flush().await;
+                })
+                .await
+                {
+                    Ok(_) => {}
+                    Err(_) => error!("USB Write Timeout! Host might not be reading."),
                 }
-                let _ = usb.write_all(b"\r\n").await;
-                let _ = usb.flush().await;
             }
         }
     }
@@ -185,8 +218,13 @@ fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
 pub fn show_info(verbose: bool) {
     usb_write(concat!("Komsi2Tacho Version ", env!("CARGO_PKG_VERSION"),));
 
+    let status = CAN_STATUS.lock(|s| s.borrow().clone());
+    let mut status_msg: String<64> = String::new();
+    let _ = write!(status_msg, "CAN Status: {:?}", status);
+    usb_write_dynamic(status_msg);
+
     if verbose {
-        usb_write("CAN-Bus:");
+        usb_write("CAN Info:");
         usb_write("  GPIO6: TX/CTX");
         usb_write("  GPIO7: RX/CRX");
         usb_write("  Speed: 250 kbit/s");

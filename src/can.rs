@@ -1,4 +1,7 @@
-use crate::commands::{ACTUAL_SPEED, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE, usb_write_dynamic};
+use crate::commands::{
+    ACTUAL_SPEED, CAN_STATUS, CanStatus, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE,
+    usb_write_dynamic,
+};
 use crate::time::get_current_time_for_j1939;
 use alloc::format;
 use core::fmt::Write as _;
@@ -25,15 +28,15 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
     info!("CAN Manager Task started (Combined TX/RX)");
 
     loop {
-        // 1. Wir speichern das Ergebnis des Selects in einer Variable
+        // we save result of select in a variable
         let selected =
             embassy_futures::select::select(CAN_TX_CHANNEL.receive(), twai.receive_async()).await;
 
-        // Sobald .await fertig ist, sind die Borrows von 'select' beendet.
-        // Jetzt können wir 'twai' wieder frei benutzen.
+        // after  .await is finished the Borrows of 'select' have endet
+        // and wen can use 'twai' again
 
         match selected {
-            // FALL: Senden
+            // sending
             embassy_futures::select::Either::First(frame) => {
                 match embassy_time::with_timeout(
                     Duration::from_millis(100),
@@ -42,34 +45,46 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
                 .await
                 {
                     Ok(Ok(_)) => {
-                        // Erfolgreich gesendet
+                        // success
+                        CAN_STATUS.lock(|s| *s.borrow_mut() = CanStatus::Ready);
                     }
                     Ok(Err(e)) => {
                         error!("CAN TX Error: {:?}", e);
-                        let mut s: String<64> = String::new();
-                        let _ = write!(s, "CAN TX Error: {:?}", e);
-                        usb_write_dynamic(s);
+                        // let mut s: String<64> = String::new();
+                        // let _ = write!(s, "CAN TX Error: {:?}", e);
+                        // usb_write_dynamic(s);
 
                         if format!("{:?}", e).contains("BusOff") {
+                            CAN_STATUS.lock(|s| *s.borrow_mut() = CanStatus::BusOff);
                             warn!("CAN-Bus-Off detected! Resetting...");
 
-                            // JETZT ist twai hier verfügbar!
                             let cfg = twai.stop();
                             Timer::after(Duration::from_millis(1000)).await;
                             twai = cfg.start();
-                            info!("Controller neu gestartet.");
+                            info!("Controller restarted.");
+                        } else {
+                            CAN_STATUS.lock(|s| {
+                                let mut err_msg: String<32> = String::new();
+                                let _ = write!(err_msg, "{:?}", e);
+                                *s.borrow_mut() = CanStatus::TransmitError(err_msg);
+                            });
                         }
                     }
                     Err(e) => {
+                        CAN_STATUS.lock(|s| {
+                            let mut err_msg: String<32> = String::new();
+                            let _ = write!(err_msg, "{:?}", e);
+                            *s.borrow_mut() = CanStatus::OtherError(err_msg);
+                        });
                         warn!("CAN TX Timeout! Controller might be stuck, resetting...");
-                        let mut s: String<64> = String::new();
-                        let _ = write!(s, "CAN TX Error: {:?}", e);
-                        usb_write_dynamic(s);
+                        // let mut s: String<64> = String::new();
+                        // let _ = write!(s, "CAN TX Error: {:?}", e);
+                        // usb_write_dynamic(s);
 
                         let cfg = twai.stop();
                         Timer::after(Duration::from_millis(1000)).await;
                         twai = cfg.start();
-                        info!("Controller nach Timeout neu gestartet.");
+                        info!("Controller restarted after.");
                     }
                 }
             }
@@ -78,6 +93,7 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
             embassy_futures::select::Either::Second(result) => {
                 match result {
                     Ok(frame) => {
+                        CAN_STATUS.lock(|s| *s.borrow_mut() = CanStatus::Ready);
                         let id = match frame.id() {
                             Id::Standard(s) => s.as_raw() as u32,
                             Id::Extended(e) => e.as_raw(),
@@ -106,6 +122,11 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
                         }
                     }
                     Err(e) => {
+                        CAN_STATUS.lock(|s| {
+                            let mut err_msg: String<32> = String::new();
+                            let _ = write!(err_msg, "{:?}", e);
+                            *s.borrow_mut() = CanStatus::ReceiveError(err_msg);
+                        });
                         error!("CAN RX hardware error: {:?}", e);
                         let mut s: String<64> = String::new();
                         let _ = write!(s, "ERR: CAN RX Error: {:?}", e);
@@ -146,8 +167,11 @@ pub async fn send_acknowledgment_message() {
     let twai_id = ExtendedId::new(id.as_raw()).unwrap();
     let twai_data = frame.pdu();
     let twai_frame = EspTwaiFrame::new(twai_id, &twai_data).unwrap();
-    can_send_frame(twai_frame).await;
-    info!("AcknowledgmentMessage sent");
+    if let Err(_) = CAN_TX_CHANNEL.try_send(twai_frame) {
+        warn!("AcknowledgmentMessage dropped (channel full)");
+    } else {
+        info!("AcknowledgmentMessage sent");
+    }
 }
 
 pub async fn send_hr_distance_message() {
