@@ -958,16 +958,16 @@ dependencies = [
 
 [[package]]
 name = "komsi"
-version = "1.6.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60523c89c8878a3a68d015b99aaac33520111265419b674a3362b22b4ac6b85f"
+checksum = "5ae8b13dfe6067e22fc40a7927d25e39eccb1d459da54e1dc869ced687ad394c"
 dependencies = [
  "defmt 1.0.1",
 ]
 
 [[package]]
 name = "komsi2tacho"
-version = "1.5.1"
+version = "1.6.0"
 dependencies = [
  "defmt 1.0.1",
  "embassy-executor",
