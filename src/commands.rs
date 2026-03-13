@@ -216,17 +216,20 @@ fn komsi_dispatch(cmd_char: char, digits: &[u8]) {
 }
 
 pub fn show_info(verbose: bool) {
-    usb_write(concat!("Komsi2Tacho Version ", env!("CARGO_PKG_VERSION"),));
-
-    let status = CAN_STATUS.lock(|s| s.borrow().clone());
-    let mut status_msg: String<64> = String::new();
-    let _ = write!(status_msg, "CAN Status: {:?}", status);
-    usb_write_dynamic(status_msg);
+    usb_write("-----");
+    usb_write(concat!("RuhrModding Tacho v", env!("CARGO_PKG_VERSION"),));
 
     if verbose {
+        usb_write("Model:");
+        usb_write("  esp32c6");
         usb_write("CAN Info:");
         usb_write("  GPIO6: TX/CTX");
         usb_write("  GPIO7: RX/CRX");
         usb_write("  Speed: 250 kbit/s");
     }
+
+    let status = CAN_STATUS.lock(|s| s.borrow().clone());
+    let mut status_msg: String<64> = String::new();
+    let _ = write!(status_msg, "CAN Status: {:?}", status);
+    usb_write_dynamic(status_msg);
 }
