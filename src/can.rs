@@ -1,6 +1,6 @@
 use crate::commands::{
-    ACTUAL_SPEED, CAN_STATUS, CanStatus, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE,
-    usb_write_dynamic,
+    ACTUAL_SPEED, CAN_STATUS, CanStatus, LedSignal, MAX_SPEED, TOTAL_DISTANCE, TRIP_DISTANCE,
+    set_led_signal, usb_write, usb_write_dynamic,
 };
 use crate::time::get_current_time_for_j1939;
 use alloc::format;
@@ -142,6 +142,71 @@ pub async fn can_manager_task(mut twai: Twai<'static, Async>) {
 /// Helper function to put a packet into the queue from anywhere
 pub async fn can_send_frame(frame: EspTwaiFrame) {
     CAN_TX_CHANNEL.send(frame).await;
+}
+
+/// Helper function for local loopback test mode
+#[embassy_executor::task]
+pub async fn can_self_test_task(mut twai: Twai<'static, Async>) {
+    info!("CAN Self-Test Task started");
+    usb_write("--- CAN-Bus Self-Test Mode ---");
+
+    let test_id = ExtendedId::new(0x1234567).unwrap();
+    let test_data = [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03];
+    // let test_frame = EspTwaiFrame::new(test_id, &test_data).unwrap();
+    let test_frame = EspTwaiFrame::new_self_reception(test_id, &test_data).unwrap();
+
+    loop {
+        // Send test frame
+        let send_result = embassy_time::with_timeout(
+            Duration::from_millis(100),
+            twai.transmit_async(&test_frame),
+        )
+        .await;
+
+        match send_result {
+            Ok(_) => {
+                info!("Testframe gesendet");
+                // Wait for the frame to be received (SelfTest mode receives its own frames)
+                match embassy_time::with_timeout(Duration::from_millis(100), twai.receive_async())
+                    .await
+                {
+                    Ok(Ok(rx_frame)) => {
+                        info!("Testframe empfangen");
+                        if rx_frame.id() == test_frame.id() && rx_frame.data() == test_frame.data()
+                        {
+                            usb_write("Selbsttest erfolgreich: Paket korrekt empfangen");
+                        } else {
+                            let mut msg: String<64> = String::new();
+                            let _ = write!(
+                                msg,
+                                "Fehler: Paketinhalt falsch (ID: {:X?})",
+                                rx_frame.id()
+                            );
+                            usb_write_dynamic(msg);
+                        }
+                    }
+                    Ok(Err(e)) => {
+                        error!("Fehler beim Empfang: {:?}", e);
+                        let mut msg: String<64> = String::new();
+                        let _ = write!(msg, "Fehler beim Empfang: {:?}", e);
+                        usb_write_dynamic(msg);
+                    }
+                    Err(_) => {
+                        error!("Timeout beim Empfang");
+                        usb_write("Fehler: Timeout beim Empfang");
+                    }
+                }
+            }
+            Err(e) => {
+                info!("Fehler beim Senden: {:?}", e);
+                let mut msg: String<64> = String::new();
+                let _ = write!(msg, "Fehler beim Senden: {:?}", e);
+                usb_write_dynamic(msg);
+            }
+        }
+
+        Timer::after(Duration::from_secs(1)).await;
+    }
 }
 
 pub async fn send_acknowledgment_message() {
