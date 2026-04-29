@@ -49,6 +49,24 @@ Das `nanoESP32‑C6 V1.0 Entwicklungsboard` besitzt zwei USB-Anschlüsse, von de
 Wenn man zu Testzwecken ein Terminalprogramm mit dem USB-Verbindet, sollte auf dem KOMSI-Port eine Komsi-Nachricht
 ausgegeben werden und man kann manuell KOMSI-Befehle an den ESP32 senden.
 
+## 4. Debug-Modus (Selbsttest)
+
+Wenn beim Start (Power-on oder Reset-Button gedrückt) der `GPIO 10` mit `GND` verbunden ist, wechselt die Software in einen **CAN-Bus Selbsttest-Modus** und bleibt dort bis zum nächsten Reset
+ In diesem Modus wird im Sekundentakt die Kommunikation zwischen ESP32 und CAN-Transceiver getestet, in dem der ESP32 ein Paket an den Transceiver sendet und den Empfang prüft. **Für diesen Test sollte kein anderer CAN-Bus-Teilnehmer am Transceiver angeschlossen sein.**
+
+Wenn der Test startet, sollte auf der seriellen Konsole eine Meldung erscheinen, dass der Test gestartet wurde. Danach werden alle 1 Sekunde die Testergebnisse ausgegeben.
+  ```
+11:06:25.256 -> ========================================
+11:06:25.256 -> Komsi2Tacho Version 1.8.0-alpha started
+11:06:25.256 -> --- CAN-Bus Self-Test Mode ---
+11:06:25.256 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:26.265 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:27.241 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:28.258 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:29.242 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:30.252 -> Selbsttest erfolgreich: Paket korrekt empfangen
+  ```
+
 ## Wichtige Hinweise
 
 - **Terminierung:** Zwischen CAN-H und CAN-L müssen ca. 60 Ohm gemessen werden. Die preiswerten Transceiver haben
@@ -62,5 +80,5 @@ ausgegeben werden und man kann manuell KOMSI-Befehle an den ESP32 senden.
   andere Varianten teils erheblich angepasste werden.
 - Aktuell genutztes Board: `nanoESP32‑C6 V1.0 Entwicklungsboard`
 - Aktuell genutzter CAN-Bus-Transceiver: `SN65HVD230`. Es ist wichtig, dass es der VP230-Typ ist, andere kommen mit der
-  3,3 Volt Versorgungsspannung des ESP32 evtl. nicht zuverlässig genug auf die notwendigen Spannungen des CAN-BUS.
+  3,3-Volt-Versorgungsspannung des ESP32 evtl. nicht zuverlässig genug auf die notwendigen Spannungen des CAN-BUS.
  

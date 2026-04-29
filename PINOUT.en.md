@@ -48,6 +48,27 @@ The `nanoESP32‑C6 V1.0 development board` has two USB ports, onle the "native"
 If you connect a terminal program to the USB, a Komsi message should be output on the KOMSI port and you can send
 commands to the ESP32-C6 manually.
 
+## 4. Debug Mode (Self-test)
+
+If **GPIO 10** is connected to GND during startup (either via power-on or by pressing the reset button), the software enters a **CAN bus self-test mode** and remains in this mode until the next reset.
+
+In this mode, the communication between the ESP32 and the CAN transceiver is tested every second. The ESP32 sends a data packet to the transceiver and verifies its reception. **For this test, no other CAN bus participants should be connected to the transceiver.**
+
+When the test begins, a message will appear on the serial console indicating that the test has started. Following this, the test results will be output every 1 second.
+
+
+  ```
+11:06:25.256 -> ========================================
+11:06:25.256 -> Komsi2Tacho Version 1.8.0-alpha started
+11:06:25.256 -> --- CAN-Bus Self-Test Mode ---
+11:06:25.256 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:26.265 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:27.241 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:28.258 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:29.242 -> Selbsttest erfolgreich: Paket korrekt empfangen
+11:06:30.252 -> Selbsttest erfolgreich: Paket korrekt empfangen
+  ```
+
 ## Important Notes
 
 - **Termination:** Approximately 60 ohms should be measured between CAN-H and CAN-L. Inexpensive transceivers already
