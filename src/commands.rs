@@ -11,6 +11,19 @@ use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use heapless::String;
 use komsi::KomsiCommand;
 
+#[derive(Debug, Clone, Copy, PartialEq, defmt::Format)]
+pub enum LedSignal {
+    None,
+    Ok,
+    Error,
+}
+
+pub static LED_SIGNAL_CHANNEL: Channel<CriticalSectionRawMutex, LedSignal, 4> = Channel::new();
+
+pub fn set_led_signal(signal: LedSignal) {
+    let _ = LED_SIGNAL_CHANNEL.try_send(signal);
+}
+
 #[derive(Debug)]
 pub enum UsbMsg {
     Static(&'static str),
