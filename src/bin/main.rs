@@ -3,14 +3,16 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
-use embassy_time::Timer;
+use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
-use esp_hal::gpio::Io;
+use esp_hal::gpio::{Input, InputConfig, Io, Level, Output, OutputConfig, Pull};
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::twai::{BaudRate, TwaiConfiguration, TwaiMode};
 use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use komsi::KomsiDateTime;
-use komsi2tacho::can::{can_manager_task, date_time_task, hr_distance_task, tachograph_task};
+use komsi2tacho::can::{
+    can_manager_task, can_self_test_task, date_time_task, hr_distance_task, tachograph_task,
+};
 use komsi2tacho::commands::{komsi_task, usb_write};
 use komsi2tacho::time::sync_system_time;
 
@@ -51,6 +53,27 @@ async fn main(spawner: Spawner) -> ! {
     // Initialization of IO pins
     let _io = Io::new(peripherals.IO_MUX);
 
+    // wait time for USB-Serial-JTAG Zeit to connect with PC so the first messages are not lost in buffer
+    embassy_time::Timer::after(Duration::from_millis(2000)).await;
+    for _ in 0..5 {
+        usb_write("");
+    }
+    usb_write("========================================");
+
+    // Check for Debug Mode (GPIO 10)
+    let debug_pin = Input::new(
+        peripherals.GPIO10,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+    let mut is_debug_mode = debug_pin.is_low();
+    // is_debug_mode = true; // temporary debug mode override for tests in development
+
+    let twai_mode = if is_debug_mode {
+        TwaiMode::SelfTest
+    } else {
+        TwaiMode::Normal
+    };
+
     // In esp-hal 1.0.0 (C6) it is different, sometimes io.gpio6 or io.pins.gpio6
     // or via peripherals like here
     // It is even possible that the order of ports/pins in the parameters is not RX TX (as currently) but exactly the opposite.
@@ -61,7 +84,7 @@ async fn main(spawner: Spawner) -> ! {
         peripherals.GPIO7, // TWAI_RX
         peripherals.GPIO6, // TWAI_TX
         BaudRate::B250K,
-        TwaiMode::Normal, // Normal mode (send & receive), for a self-test: TwaiMode::SelfTest
+        twai_mode,
     );
 
     // now we initialize the CAN bus
@@ -70,14 +93,21 @@ async fn main(spawner: Spawner) -> ! {
     let twai = can_config_async.start();
 
     // Start tasks
-    spawner.spawn(can_manager_task(twai)).unwrap();
-    spawner.spawn(hr_distance_task()).unwrap(); // sends distance info to Tacho and updates values
-    spawner.spawn(tachograph_task()).unwrap(); // sends speed data to Tacho 
-    spawner.spawn(date_time_task()).unwrap(); // sends datetime info to Tacho
+    if is_debug_mode {
+        info!("Debug Mode enabled, CAN-Mode: Self-Test");
+        spawner.spawn(can_self_test_task(twai)).unwrap();
+    } else {
+        info!("No Debug Mode enabled, CAN Mode: Normal operation");
+        spawner.spawn(can_manager_task(twai)).unwrap();
+        spawner.spawn(hr_distance_task()).unwrap(); // sends distance info to Tacho and updates values
+        spawner.spawn(tachograph_task()).unwrap(); // sends speed data to Tacho
+        spawner.spawn(date_time_task()).unwrap(); // sends datetime info to Tacho
+    }
 
     info!(
-        "Komsi2Tacho Version {}: TWAI/CAN initialized (250k).",
-        env!("CARGO_PKG_VERSION")
+        "Komsi2Tacho Version {}: TWAI/CAN initialized (250k, Mode: {:?}).",
+        env!("CARGO_PKG_VERSION"),
+        twai_mode
     );
 
     usb_write(concat!(
